@@ -1,0 +1,41 @@
+{
+    "name": "futurello/moodboard",
+    "type": "library",
+    "description": "A Laravel package for moodboard API functionality",
+    "version": "1.0.0",
+    "license": "MIT",    
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.0|^11.0|^12.0",
+        "intervention/image": "^3.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Futurello\\MoodBoard\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Futurello\\MoodBoard\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Futurello\\MoodBoard\\Providers\\MoodBoardServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "Futurello/bin/phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
