@@ -108,7 +108,11 @@ class MoodBoard extends Model
                 'board_id' => $boardId,  // ✅ Явно указываем ID
                 'name' => $data['name'] ?? 'Untitled Board',
                 'description' => $data['description'] ?? null,
-                'data' => $data,
+                'data' => array_merge([
+                    'objects' => [],
+                    'name' => $data['name'] ?? 'Untitled Board',
+                    'description' => $data['description'] ?? null
+                ], $data),
                 'settings' => $settings ?? static::getDefaultSettings(),
             ]);
         }

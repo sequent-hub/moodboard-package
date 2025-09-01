@@ -18,8 +18,8 @@ class MoodBoardController extends Controller
     public function save(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'boardId' => 'required|string|max:255',
-            'boardData' => 'required|array',
+            'boardId' => 'required|numeric',
+            'boardData' => 'sometimes|array',
         ]);
 
         if ($validator->fails()) {
@@ -33,14 +33,31 @@ class MoodBoardController extends Controller
         DB::beginTransaction();
 
         try {
-            $boardId = $request->input('boardId');
-            $boardData = $request->input('boardData');
+            $boardId = (string) $request->input('boardId'); // Преобразуем в строку
+            $boardData = $request->input('boardData', []); // Значение по умолчанию
+
+            \Log::info("MoodBoard save attempt", [
+                'boardId' => $boardId,
+                'boardId_type' => gettype($request->input('boardId')),
+                'boardId_converted' => $boardId,
+                'boardData' => $boardData,
+                'request_all' => $request->all()
+            ]);
 
             // Очищаем данные изображений от base64, оставляем только imageId
             $cleanedBoardData = $this->cleanImageData($boardData);
+            
+            \Log::info("Cleaned board data", ['cleanedData' => $cleanedBoardData]);
 
             // Создаем или обновляем доску
+            \Log::info("Calling createOrUpdateBoard", ['boardId' => $boardId]);
             $board = MoodBoard::createOrUpdateBoard($boardId, $cleanedBoardData);
+            
+            \Log::info("Board created/updated", [
+                'board' => $board,
+                'board_id' => $board->board_id ?? 'null',
+                'board_exists' => $board ? 'yes' : 'no'
+            ]);
 
             DB::commit();
 
