@@ -17,31 +17,54 @@ class MoodBoardController extends Controller
      */
     public function save(Request $request): JsonResponse
     {
+        // Логируем все входящие данные для отладки
+        \Log::info("MoodBoard save request received", [
+            'headers' => $request->headers->all(),
+            'content_type' => $request->header('Content-Type'),
+            'method' => $request->method(),
+            'url' => $request->url(),
+            'all_data' => $request->all(),
+            'json_data' => $request->json()->all() ?? 'no json data'
+        ]);
+
         $validator = Validator::make($request->all(), [
-            'boardId' => 'required|numeric',
+            'boardId' => 'required',
             'boardData' => 'sometimes|array',
+            'cardId' => 'sometimes', // Альтернативное поле для ID
+            'data' => 'sometimes|array', // Альтернативное поле для данных
         ]);
 
         if ($validator->fails()) {
+            \Log::error("MoodBoard validation failed", [
+                'errors' => $validator->errors(),
+                'request_data' => $request->all()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Некорректные данные',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
+                'received_data' => $request->all() // Для отладки
             ], 422);
         }
 
         DB::beginTransaction();
 
         try {
-            $boardId = (string) $request->input('boardId'); // Преобразуем в строку
-            $boardData = $request->input('boardData', []); // Значение по умолчанию
+            // Поддерживаем разные форматы данных от MoodBoard
+            $boardId = (string) ($request->input('boardId') ?? $request->input('cardId') ?? 'default');
+            $boardData = $request->input('boardData') ?? $request->input('data') ?? [];
 
             \Log::info("MoodBoard save attempt", [
                 'boardId' => $boardId,
                 'boardId_type' => gettype($request->input('boardId')),
                 'boardId_converted' => $boardId,
                 'boardData' => $boardData,
-                'request_all' => $request->all()
+                'request_all' => $request->all(),
+                'has_boardId' => $request->has('boardId'),
+                'has_cardId' => $request->has('cardId'),
+                'has_boardData' => $request->has('boardData'),
+                'has_data' => $request->has('data')
             ]);
 
             // Очищаем данные изображений от base64, оставляем только imageId
