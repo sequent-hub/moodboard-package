@@ -12,17 +12,42 @@ use Illuminate\Routing\Controller;
 
 class ImageController extends Controller
 {
+    /**
+     * Handle OPTIONS requests for CORS
+     */
+    public function options()
+    {
+        return response()->json([], 200)->withHeaders([
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
+        ]);
+    }
+
     public function upload(Request $request)
     {
+        // Улучшенная валидация
         $request->validate([
-            'image' => 'required|image|max:10240', // 10MB макс
-            'name' => 'string|max:255',
-            'width' => 'integer|min:1',
-            'height' => 'integer|min:1'
+            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,bmp|max:10240', // 10MB макс
+            'name' => 'sometimes|string|max:255',
+            'width' => 'sometimes|integer|min:1',
+            'height' => 'sometimes|integer|min:1'
         ]);
 
         try {
             $file = $request->file('image');
+            
+            // Дополнительная проверка типа файла
+            if (!in_array($file->getClientMimeType(), [
+                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                'image/webp', 'image/bmp'
+            ])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Неподдерживаемый тип файла'
+                ], 422);
+            }
+            
             $hash = md5_file($file->getPathname());
 
             // Проверяем дубликаты
@@ -30,11 +55,12 @@ class ImageController extends Controller
             if ($existingImage) {
                 Log::info("Reusing existing image: {$existingImage->id}");
 
-                return response()->json([
+                $response = response()->json([
                     'success' => true,
                     'data' => [
-                        'id' => $existingImage->id,
-                        'url' => route('images.file', $existingImage->id),
+                        'imageId' => $existingImage->id, // ✅ Используем imageId вместо id
+                        'id' => $existingImage->id, // Оставляем для совместимости
+                        'url' => $this->getImageUrl($existingImage->id),
                         'name' => $existingImage->name,
                         'width' => $existingImage->width,
                         'height' => $existingImage->height,
@@ -42,6 +68,9 @@ class ImageController extends Controller
                     ],
                     'message' => 'Использовано существующее изображение'
                 ]);
+                
+                // Добавляем CORS заголовки
+                return $this->addCorsHeaders($response);
             }
 
             // Генерируем уникальное имя файла
@@ -77,25 +106,32 @@ class ImageController extends Controller
 
             Log::info("Image uploaded: {$image->id} ({$image->name})");
 
-            return response()->json([
+            $response = response()->json([
                 'success' => true,
                 'data' => [
-                    'id' => $image->id,
-                    'url' => route('images.file', $image->id),
+                    'imageId' => $image->id, // ✅ Главное поле для фронтенда
+                    'id' => $image->id, // Оставляем для совместимости
+                    'url' => $this->getImageUrl($image->id),
                     'name' => $image->name,
                     'width' => $image->width,
                     'height' => $image->height,
                     'size' => $image->size
-                ]
+                ],
+                'message' => 'Изображение успешно загружено'
             ]);
+
+            // Добавляем CORS заголовки
+            return $this->addCorsHeaders($response);
 
         } catch (\Exception $e) {
             Log::error('Image upload error: ' . $e->getMessage());
 
-            return response()->json([
+            $response = response()->json([
                 'success' => false,
                 'message' => 'Ошибка загрузки: ' . $e->getMessage()
             ], 500);
+
+            return $this->addCorsHeaders($response);
         }
     }
 
@@ -264,6 +300,33 @@ class ImageController extends Controller
                 'success' => false,
                 'message' => 'Ошибка очистки'
             ], 500);
+        }
+    }
+
+    /**
+     * Добавление CORS заголовков к ответу
+     */
+    private function addCorsHeaders($response)
+    {
+        return $response->withHeaders([
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
+        ]);
+    }
+
+    /**
+     * Получение правильного URL изображения
+     */
+    private function getImageUrl(string $imageId): string
+    {
+        try {
+            // Пытаемся использовать именованный маршрут
+            return route('images.file', $imageId);
+        } catch (\Exception $e) {
+            // Если маршрут не найден, возвращаем базовый URL
+            Log::warning("Route 'images.file' not found, using fallback URL for image: {$imageId}");
+            return url("/api/images/{$imageId}/file");
         }
     }
 }

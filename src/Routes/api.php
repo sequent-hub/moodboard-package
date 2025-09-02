@@ -10,6 +10,9 @@ Route::prefix('api')->group(function () {
 
 // API маршруты для moodboard
 Route::prefix('moodboard')->group(function () {
+    // OPTIONS поддержка для CORS
+    Route::options('/{any}', [MoodBoardController::class, 'options'])->where('any', '.*');
+    
     Route::post('/save', [MoodBoardController::class, 'save']);
     Route::get('/load/{boardId}', [MoodBoardController::class, 'load']);
     Route::get('/{boardId}', [MoodBoardController::class, 'load']); // Для совместимости с frontend
@@ -24,6 +27,9 @@ Route::prefix('moodboard')->group(function () {
 
 // Изображения
 Route::prefix('images')->group(function () {
+    // OPTIONS поддержка для CORS
+    Route::options('/{any}', [ImageController::class, 'options'])->where('any', '.*');
+    
     Route::post('/upload', [ImageController::class, 'upload']);
     Route::get('/{id}', [ImageController::class, 'show']);
     Route::get('/{id}/file', [ImageController::class, 'file'])->name('images.file');

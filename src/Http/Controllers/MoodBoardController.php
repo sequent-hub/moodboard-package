@@ -13,6 +13,18 @@ use Illuminate\Routing\Controller;
 class MoodBoardController extends Controller
 {
     /**
+     * Handle OPTIONS requests for CORS
+     */
+    public function options()
+    {
+        return response()->json([], 200)->withHeaders([
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
+        ]);
+    }
+
+    /**
      * Сохранение данных в БД
      */
     public function save(Request $request): JsonResponse
@@ -358,7 +370,19 @@ class MoodBoardController extends Controller
                     if (isset($object['imageId'])) {
                         $image = Image::find($object['imageId']);
                         if ($image) {
-                            $object['src'] = $image->url;
+                            // Используем безопасный способ получения URL
+                            $object['src'] = $this->getImageUrl($image->id);
+                            
+                            // Добавляем дополнительную информацию об изображении
+                            $object['width'] = $image->width;
+                            $object['height'] = $image->height;
+                            $object['name'] = $image->name;
+                        } else {
+                            // Если изображение не найдено, логируем это
+                            \Log::warning("Image not found for imageId: {$object['imageId']}");
+                            // Удаляем объект или помечаем как недоступный
+                            $object['src'] = null;
+                            $object['error'] = 'Image not found';
                         }
                     }
                 }
@@ -366,5 +390,20 @@ class MoodBoardController extends Controller
         }
 
         return $boardData;
+    }
+
+    /**
+     * Получение правильного URL изображения
+     */
+    private function getImageUrl(string $imageId): string
+    {
+        try {
+            // Пытаемся использовать именованный маршрут
+            return route('images.file', $imageId);
+        } catch (\Exception $e) {
+            // Если маршрут не найден, возвращаем базовый URL
+            \Log::warning("Route 'images.file' not found, using fallback URL for image: {$imageId}");
+            return url("/api/images/{$imageId}/file");
+        }
     }
 }
