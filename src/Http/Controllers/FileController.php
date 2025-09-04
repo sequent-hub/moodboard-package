@@ -176,14 +176,14 @@ class FileController extends Controller
         try {
             $file = File::findOrFail($id);
 
-            if (!Storage::exists($file->path)) {
+            if (!Storage::disk('public')->exists($file->path)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Файл не найден на диске'
                 ], 404);
             }
 
-            return Storage::download($file->path, $file->name);
+            return Storage::disk('public')->download($file->path, $file->name);
 
         } catch (\Exception $e) {
             return response()->json([

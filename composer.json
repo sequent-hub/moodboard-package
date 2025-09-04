@@ -2,7 +2,7 @@
     "name": "futurello/moodboard",
     "type": "library",
     "description": "A Laravel package for moodboard API functionality",
-    "version": "1.0.4",
+    "version": "1.0.6",
     "license": "MIT",    
     "require": {
         "php": "^8.2",
