@@ -99,11 +99,39 @@ class MoodBoardServiceProvider extends ServiceProvider
      */
     protected function isMoodBoardMigration($migration): bool
     {
-        $migrationName = $migration->getMigrationName();
-        
-        // Проверяем по именам таблиц, которые создает пакет
-        return str_contains($migrationName, 'moodboards') || 
-               str_contains($migrationName, 'images') || 
-               str_contains($migrationName, 'files');
+        try {
+            // Получаем имя класса миграции
+            $className = get_class($migration);
+            
+            // Для анонимных классов получаем имя файла через рефлексию
+            if (str_contains($className, 'class@anonymous')) {
+                $reflection = new \ReflectionClass($migration);
+                $filename = $reflection->getFileName();
+                
+                if ($filename) {
+                    $migrationName = basename($filename, '.php');
+                    
+                    // Проверяем по именам таблиц, которые создает пакет
+                    return str_contains($migrationName, 'moodboards') || 
+                           str_contains($migrationName, 'images') || 
+                           str_contains($migrationName, 'files');
+                }
+            }
+            
+            // Для именованных классов используем имя класса
+            return str_contains($className, 'MoodBoard') ||
+                   str_contains($className, 'CreateMoodboardsTable') ||
+                   str_contains($className, 'CreateImagesTable') ||
+                   str_contains($className, 'CreateFilesTable');
+                   
+        } catch (\Exception $e) {
+            // В случае ошибки логируем и возвращаем false
+            Log::channel('single')->warning('⚠️ [MOODBOARD PACKAGE] Could not determine migration ownership', [
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString(),
+            ]);
+            
+            return false;
+        }
     }
 }
