@@ -19,7 +19,7 @@ Laravel пакет для API функционала moodboard с поддерж
     "repositories": [
         {
             "type": "path",
-            "url": "./moodboard"
+            "url": "https://github.com/sequent-hub/moodboard-package.git"
         }
     ],
     "require": {
