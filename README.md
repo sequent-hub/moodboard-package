@@ -34,7 +34,7 @@ Laravel пакет для API функционала moodboard с поддерж
 composer require futurello/moodboard
 ```
 
-### 3. Зарегистрировать Service Provider в `config/app.php`:
+### 3. Зарегистрировать Service Provider в `config/app.php`: (этот пункт устарел, для Laravel 11+ не нужен. Service Provider регистрируется автоматически благодаря Laravel Package Auto-Discovery)
 
 ```php
 'providers' => [
