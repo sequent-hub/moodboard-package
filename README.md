@@ -18,12 +18,12 @@ Laravel пакет для API функционала moodboard с поддерж
 {
     "repositories": [
         {
-            "type": "path",
+            "type": "vcs",
             "url": "https://github.com/sequent-hub/moodboard-package.git"
         }
     ],
     "require": {
-        "futurello/moodboard": "*"
+        "futurello/moodboard": "^1.1.9"
     }
 }
 ```
