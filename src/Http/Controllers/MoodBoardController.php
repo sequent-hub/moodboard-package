@@ -453,16 +453,14 @@ class MoodBoardController extends Controller
                             // Используем безопасный способ получения URL
                             $object['src'] = $this->getImageUrl($image->id);
                             
-                            // Добавляем дополнительную информацию об изображении
-                            $object['width'] = $image->width;
-                            $object['height'] = $image->height;
+                            // Добавляем только дополнительную информацию об изображении, НЕ меняя пользовательские размеры
                             $object['name'] = $image->name;
 
                             if ($requestId !== null) {
-                                $overwritten = ($beforeWidth !== null || $beforeHeight !== null)
+                                $differsFromIntrinsic = ($beforeWidth !== null || $beforeHeight !== null)
                                     && (($beforeWidth !== $image->width) || ($beforeHeight !== $image->height));
-                                if ($overwritten) {
-                                    \Log::info("MoodBoard restore overwrite detected", [
+                                if ($differsFromIntrinsic) {
+                                    \Log::info("MoodBoard restore overwrite skipped", [
                                         'req' => $requestId,
                                         'imageId' => $image->id,
                                         'before' => ['width' => $beforeWidth, 'height' => $beforeHeight],
