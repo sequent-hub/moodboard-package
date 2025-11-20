@@ -223,7 +223,15 @@ class MoodBoardController extends Controller
      */
     public function show(string $boardId): JsonResponse
     {
+        $requestId = (string) Str::uuid();
         try {
+            \Log::info("MoodBoard show called", [
+                'req' => $requestId,
+                'boardId' => $boardId,
+                'method' => request()->getMethod(),
+                'url' => request()->fullUrl()
+            ]);
+
             $board = MoodBoard::findByBoardId($boardId);
 
             if (!$board) {
@@ -234,6 +242,22 @@ class MoodBoardController extends Controller
             }
 
             $boardData = $board->getFullData();
+
+            // Диагностический снимок размеров до восстановления URL (возврат остаётся без изменений)
+            \Log::info("MoodBoard show snapshot (pre-restore)", [
+                'req' => $requestId,
+                'boardId' => $boardId,
+                'images' => $this->snapshotImageObjects($boardData['objects'] ?? [])
+            ]);
+            // Запускаем восстановление URL и проверку перезаписи в логах, но не изменяем выдачу
+            try {
+                $this->restoreImageUrls($boardData, $requestId);
+            } catch (\Throwable $t) {
+                \Log::warning("MoodBoard show restoreImageUrls logging attempt failed", [
+                    'req' => $requestId,
+                    'message' => $t->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
