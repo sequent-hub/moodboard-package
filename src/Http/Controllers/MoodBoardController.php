@@ -34,6 +34,7 @@ class MoodBoardController extends Controller
             'boardData' => 'sometimes|array',
             'cardId' => 'sometimes', // Альтернативное поле для ID
             'data' => 'sometimes|array', // Альтернативное поле для данных
+            'settings' => 'sometimes|array' // Параметры доски (фон, сетка, зум)
         ]);
 
         if ($validator->fails()) {
@@ -51,12 +52,16 @@ class MoodBoardController extends Controller
             // Поддерживаем разные форматы данных от MoodBoard
             $boardId = (string) ($request->input('boardId') ?? $request->input('cardId') ?? 'default');
             $boardData = $request->input('boardData') ?? $request->input('data') ?? [];
+            $settings = $request->input('settings');
+            if (!is_array($settings)) {
+                $settings = null;
+            }
 
             // Очищаем данные изображений от base64, оставляем только imageId
             $cleanedBoardData = $this->cleanImageData($boardData);
             
             // Создаем или обновляем доску
-            $board = MoodBoard::createOrUpdateBoard($boardId, $cleanedBoardData);
+            $board = MoodBoard::createOrUpdateBoard($boardId, $cleanedBoardData, $settings);
 
             DB::commit();
 
