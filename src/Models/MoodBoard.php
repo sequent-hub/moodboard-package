@@ -126,7 +126,7 @@ class MoodBoard extends Model
     public static function getDefaultSettings(): array
     {
         return [
-            'backgroundColor' => '#F5F5F5',
+            'backgroundColor' => '#f7fbff',
             'grid' => [
                 'type' => 'line'
             ],
