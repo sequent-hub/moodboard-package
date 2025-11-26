@@ -128,10 +128,7 @@ class MoodBoard extends Model
         return [
             'backgroundColor' => '#F5F5F5',
             'grid' => [
-                'type' => 'line',
-                'size' => 20,
-                'visible' => true,
-                'color' => '#E0E0E0'
+                'type' => 'line'
             ],
             'zoom' => [
                 'min' => 0.1,
