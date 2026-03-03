@@ -9,6 +9,9 @@
         <testsuite name="MoodBoard Package Test Suite">
             <directory>tests</directory>
         </testsuite>
+        <testsuite name="image persistence suite">
+            <file>tests/Feature/ImagePersistenceSuiteTest.php</file>
+        </testsuite>
     </testsuites>
 
     <php>

@@ -30,7 +30,9 @@
         }
     },
     "scripts": {
-        "test": "Futurello/bin/phpunit"
+        "test": "Futurello/bin/phpunit",
+        "test:image-persistence": "vendor/bin/phpunit --configuration phpunit.xml --testsuite \"image persistence suite\"",
+        "test:upload-save-load": "vendor/bin/phpunit --configuration phpunit.xml --testsuite \"image persistence suite\""
     },
     "config": {
         "sort-packages": true

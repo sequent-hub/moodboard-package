@@ -15,3 +15,4 @@ yarn-error.log
 Thumbs.db
 coverage/
 .phpunit.cache/
+tests/_artifacts/
