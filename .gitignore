@@ -16,3 +16,4 @@ Thumbs.db
 coverage/
 .phpunit.cache/
 tests/_artifacts/
+_artifacts/

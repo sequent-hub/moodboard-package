@@ -10,7 +10,7 @@
             <directory>tests</directory>
         </testsuite>
         <testsuite name="image persistence suite">
-            <file>tests/Feature/ImagePersistenceSuiteTest.php</file>
+            <directory>tests/Feature/Autosave</directory>
         </testsuite>
     </testsuites>
 
