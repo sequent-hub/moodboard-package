@@ -13,10 +13,10 @@ Route::prefix('moodboard')->group(function () {
     // OPTIONS поддержка для CORS
     Route::options('/{any}', [MoodBoardController::class, 'options'])->where('any', '.*');
     
+    Route::get('/list', [MoodBoardController::class, 'index']);
     Route::post('/save', [MoodBoardController::class, 'save']);
     Route::get('/load/{boardId}', [MoodBoardController::class, 'load']);
     Route::get('/{boardId}', [MoodBoardController::class, 'load']); // Для совместимости с frontend
-    Route::get('/list', [MoodBoardController::class, 'index']);
     Route::get('/show/{boardId}', [MoodBoardController::class, 'show']);
     Route::delete('/delete/{boardId}', [MoodBoardController::class, 'destroy']);
     Route::post('/duplicate/{boardId}', [MoodBoardController::class, 'duplicate']);

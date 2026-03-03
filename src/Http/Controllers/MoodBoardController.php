@@ -32,9 +32,7 @@ class MoodBoardController extends Controller
         $validator = Validator::make($request->all(), [
             'boardId' => 'required',
             'boardData' => 'sometimes|array',
-            'cardId' => 'sometimes', // Альтернативное поле для ID
-            'data' => 'sometimes|array', // Альтернативное поле для данных
-            'settings' => 'sometimes|array' // Параметры доски (фон, сетка, зум)
+            'settings' => 'sometimes|array',
         ]);
 
         if ($validator->fails()) {
@@ -52,9 +50,11 @@ class MoodBoardController extends Controller
             // Поддерживаем разные форматы данных от MoodBoard
             $boardId = (string) ($request->input('boardId') ?? $request->input('cardId') ?? 'default');
             $boardData = $request->input('boardData') ?? $request->input('data') ?? [];
+            // Поддерживаем settings как на верхнем уровне, так и внутри boardData/data
             $settings = $request->input('settings');
             if (!is_array($settings)) {
-                $settings = null;
+                $settingsFromBoardData = $boardData['settings'] ?? null;
+                $settings = is_array($settingsFromBoardData) ? $settingsFromBoardData : null;
             }
 
             // Очищаем данные изображений от base64, оставляем только imageId
