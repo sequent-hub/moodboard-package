@@ -275,34 +275,6 @@ class ImageController extends Controller
         }
     }
 
-    public function cleanup()
-    {
-        try {
-            // Находим изображения, которые не используются в moodboard
-            $usedImageIds = collect();
-            
-            // Здесь должна быть логика поиска используемых изображений
-            // Пока просто удаляем старые изображения (старше 30 дней)
-            
-            $deletedCount = Image::where('created_at', '<', now()->subDays(30))->delete();
-
-            Log::info("Cleanup: deleted {$deletedCount} old images");
-
-            return response()->json([
-                'success' => true,
-                'message' => "Очистка завершена. Удалено {$deletedCount} изображений"
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Image cleanup error: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка очистки'
-            ], 500);
-        }
-    }
-
     /**
      * Добавление CORS заголовков к ответу
      */

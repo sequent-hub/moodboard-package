@@ -2,7 +2,6 @@
 
 namespace Futurello\MoodBoard\Tests\Feature;
 
-use Futurello\MoodBoard\Models\Image;
 use Futurello\MoodBoard\Tests\TestCase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -60,29 +59,6 @@ class ImageApiTest extends TestCase
 
         $this->assertDatabaseMissing('images', ['id' => $first]);
         $this->assertDatabaseMissing('images', ['id' => $second]);
-    }
-
-    public function test_it_cleans_up_old_images(): void
-    {
-        $image = Image::create([
-            'name' => 'Old image',
-            'original_name' => 'old.png',
-            'path' => 'images/old.png',
-            'mime_type' => 'image/png',
-            'size' => 10,
-            'width' => 10,
-            'height' => 10,
-            'hash' => 'old-hash',
-        ]);
-
-        $image->created_at = now()->subDays(40);
-        $image->save();
-
-        $this->postJson('/api/images/cleanup')
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $this->assertDatabaseMissing('images', ['id' => $image->id]);
     }
 
     public function test_it_validates_upload_request(): void

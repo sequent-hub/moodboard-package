@@ -70,7 +70,6 @@ php artisan migrate
 - `DELETE /api/images/{id}` - Удаление изображения
 - `GET /api/images/` - Список всех изображений
 - `POST /api/images/bulk-delete` - Массовое удаление
-- `POST /api/images/cleanup` - Очистка неиспользуемых
 
 ### Files
 
@@ -79,7 +78,6 @@ php artisan migrate
 - `PUT /api/files/{id}` - Обновление файла
 - `GET /api/files/{id}/download` - Скачивание файла
 - `DELETE /api/files/{id}` - Удаление файла
-- `POST /api/files/cleanup` - Очистка неиспользуемых
 
 ## Модели
 

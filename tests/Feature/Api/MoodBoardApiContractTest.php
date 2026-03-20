@@ -86,11 +86,11 @@ class MoodBoardApiContractTest extends TestCase
         $imageId = $upload->json('data.imageId');
         $this->assertNotEmpty($imageId);
 
-        $boardId = 'board-image-cleanup-contract';
+        $boardId = 'board-image-contract';
         $this->postJson('/api/moodboard/save', [
             'boardId' => $boardId,
             'boardData' => [
-                'name' => 'Image cleanup board',
+                'name' => 'Image contract board',
                 'objects' => [
                     [
                         'id' => 'img-obj-contract',

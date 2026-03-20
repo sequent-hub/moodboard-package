@@ -219,29 +219,4 @@ class FileController extends Controller
         }
     }
 
-    /**
-     * Очистка неиспользуемых файлов
-     */
-    public function cleanup()
-    {
-        try {
-            // Удаляем файлы старше 30 дней
-            $deletedCount = File::where('created_at', '<', now()->subDays(30))->delete();
-
-            Log::info("File cleanup: deleted {$deletedCount} old files");
-
-            return response()->json([
-                'success' => true,
-                'message' => "Очистка завершена. Удалено {$deletedCount} файлов"
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('File cleanup error: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка очистки: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 }

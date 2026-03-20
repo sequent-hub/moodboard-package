@@ -35,10 +35,8 @@ Route::prefix('images')->group(function () {
     Route::get('/{id}/file', [ImageController::class, 'file'])->name('images.file');
     Route::delete('/{id}', [ImageController::class, 'destroy']);
 
-    // Дополнительные маршруты для управления изображениями
     Route::get('/', [ImageController::class, 'index']); // Список всех изображений
     Route::post('/bulk-delete', [ImageController::class, 'bulkDelete']); // Массовое удаление
-    Route::post('/cleanup', [ImageController::class, 'cleanup']); // Очистка неиспользуемых
 });
 
 // Группа роутов для работы с файлами
@@ -48,6 +46,5 @@ Route::prefix('files')->group(function () {
     Route::put('/{id}', [FileController::class, 'update']);
     Route::get('/{id}/download', [FileController::class, 'download']);
     Route::delete('/{id}', [FileController::class, 'destroy']);
-    Route::post('/cleanup', [FileController::class, 'cleanup']);
 });
 }); // Закрываем группу api
