@@ -15,6 +15,7 @@ Route::prefix('moodboard')->group(function () {
     
     Route::get('/list', [MoodBoardController::class, 'index']);
     Route::post('/save', [MoodBoardController::class, 'save']);
+    Route::post('/history/save', [MoodBoardController::class, 'historySave']);
     Route::get('/load/{boardId}', [MoodBoardController::class, 'load']);
     Route::get('/{boardId}', [MoodBoardController::class, 'load']); // Для совместимости с frontend
     Route::get('/show/{boardId}', [MoodBoardController::class, 'show']);
