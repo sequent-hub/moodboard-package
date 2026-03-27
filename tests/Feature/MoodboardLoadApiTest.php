@@ -30,7 +30,7 @@ class MoodboardLoadApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.version', 2)
-            ->assertJsonPath('data.data.objects.0.id', 'v2');
+            ->assertJsonPath('data.state.objects.0.id', 'v2');
     }
 
     public function test_it_returns_requested_history_version_when_version_is_provided(): void
@@ -57,7 +57,7 @@ class MoodboardLoadApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.version', 1)
-            ->assertJsonPath('data.data.objects.0.id', 'old');
+            ->assertJsonPath('data.state.objects.0.id', 'old');
     }
 
     public function test_it_returns_404_when_moodboard_is_not_found(): void
@@ -112,7 +112,7 @@ class MoodboardLoadApiTest extends TestCase
             ->assertJsonPath('data.name', 'Load Composed')
             ->assertJsonPath('data.description', 'Metadata source')
             ->assertJsonPath('data.settings.backgroundColor', '#abcdef')
-            ->assertJsonPath('data.data.objects.0.id', 'obj-1')
-            ->assertJsonPath('data.data.camera.zoom', 1.5);
+            ->assertJsonPath('data.state.objects.0.id', 'obj-1')
+            ->assertJsonPath('data.state.camera.zoom', 1.5);
     }
 }

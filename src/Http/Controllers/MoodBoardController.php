@@ -116,7 +116,7 @@ class MoodBoardController extends Controller
                     'name' => $moodboard->name,
                     'description' => $moodboard->description,
                     'settings' => $moodboard->settings,
-                    'data' => $historyRow->state_json,
+                    'state' => $historyRow->state_json,
                     'version' => (int) $historyRow->version,
                 ],
             ]);
