@@ -4,6 +4,7 @@ namespace Futurello\MoodBoard\Http\Controllers;
 
 use Futurello\MoodBoard\Models\MoodBoard;
 use Futurello\MoodBoard\Models\Image;
+use Futurello\MoodBoard\Models\MoodboardHistory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -78,6 +79,83 @@ class MoodBoardController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка сохранения данных'
+            ], 500);
+        }
+    }
+
+    /**
+     * Сохранение снапшота в историю moodboard
+     */
+    public function historySave(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'moodboardId' => 'required|string|max:255',
+            'state' => 'required|array',
+            'actionType' => 'sometimes|string|max:64',
+            'createdBy' => 'sometimes|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Некорректные данные',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $moodboardId = (string) $request->input('moodboardId');
+            $state = $request->input('state', []);
+            $actionType = (string) $request->input('actionType', 'command_execute');
+            $createdBy = $request->input('createdBy');
+
+            $encodedState = json_encode(
+                $state,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION
+            );
+
+            if ($encodedState === false) {
+                $encodedState = '{}';
+            }
+
+            $stateHash = hash('sha256', $encodedState);
+
+            $latest = MoodboardHistory::query()
+                ->where('moodboard_id', $moodboardId)
+                ->orderByDesc('version')
+                ->first();
+
+            if ($latest && hash_equals($latest->state_hash, $stateHash)) {
+                return response()->json([
+                    'success' => true,
+                    'deduplicated' => true,
+                    'historyVersion' => (int) $latest->version,
+                    'moodboardId' => $moodboardId,
+                ]);
+            }
+
+            $nextVersion = $latest ? ((int) $latest->version + 1) : 1;
+
+            MoodboardHistory::query()->create([
+                'moodboard_id' => $moodboardId,
+                'version' => $nextVersion,
+                'state_json' => $state,
+                'state_hash' => $stateHash,
+                'action_type' => $actionType,
+                'created_at' => now(),
+                'created_by' => $createdBy,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'deduplicated' => false,
+                'historyVersion' => $nextVersion,
+                'moodboardId' => $moodboardId,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка сохранения истории moodboard',
             ], 500);
         }
     }
