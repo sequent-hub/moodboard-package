@@ -5,6 +5,7 @@ namespace Futurello\MoodBoard\Http\Controllers;
 use Futurello\MoodBoard\Models\MoodBoard;
 use Futurello\MoodBoard\Models\Image;
 use Futurello\MoodBoard\Services\MoodboardHistoryService;
+use Futurello\MoodBoard\Services\MoodboardMetaService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -14,7 +15,8 @@ use Illuminate\Routing\Controller;
 class MoodBoardController extends Controller
 {
     public function __construct(
-        private readonly MoodboardHistoryService $moodboardHistoryService
+        private readonly MoodboardHistoryService $moodboardHistoryService,
+        private readonly MoodboardMetaService $moodboardMetaService
     ) {
     }
 
@@ -28,6 +30,49 @@ class MoodBoardController extends Controller
             'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
         ]);
+    }
+
+    /**
+     * V2: сохранение метаданных и настроек moodboard.
+     */
+    public function moodboardMetaSave(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'moodboardId' => 'required|string|max:255',
+            'name' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'settings' => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Некорректные данные',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $saveMetaResult = $this->moodboardMetaService->saveMeta(
+                (string) $request->input('moodboardId'),
+                $request->input('settings', []),
+                $request->has('name') ? (string) $request->input('name') : null,
+                $request->has('description') ? $request->input('description') : null
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => $saveMetaResult['created']
+                    ? 'Moodboard metadata created'
+                    : 'Moodboard metadata updated',
+                'moodboardId' => $saveMetaResult['moodboardId'],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка сохранения метаданных moodboard',
+            ], 500);
+        }
     }
 
     /**
