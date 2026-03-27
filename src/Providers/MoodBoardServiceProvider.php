@@ -34,6 +34,8 @@ class MoodBoardServiceProvider extends ServiceProvider
         // Загружаем маршруты API с middleware
         Route::middleware(['moodboard.cors'])
             ->group(__DIR__.'/../Routes/api.php');
+        Route::middleware(['moodboard.cors'])
+            ->group(__DIR__.'/../Routes/api_v2.php');
         
         // Загружаем миграции
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
