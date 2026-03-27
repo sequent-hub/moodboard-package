@@ -3,6 +3,7 @@
 namespace Futurello\MoodBoard\Http\Controllers;
 
 use Futurello\MoodBoard\Models\MoodBoard;
+use Futurello\MoodBoard\Models\MoodboardHistory;
 use Futurello\MoodBoard\Models\Image;
 use Futurello\MoodBoard\Services\MoodboardHistoryService;
 use Futurello\MoodBoard\Services\MoodboardMetaService;
@@ -71,6 +72,58 @@ class MoodBoardController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка сохранения метаданных moodboard',
+            ], 500);
+        }
+    }
+
+    /**
+     * V2: загрузка moodboard с данными из истории по версии.
+     */
+    public function moodboardLoad(string $moodboard_id, ?int $version = null): JsonResponse
+    {
+        try {
+            $moodboard = MoodBoard::findByBoardId($moodboard_id);
+
+            if (!$moodboard) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Moodboard not found',
+                ], 404);
+            }
+
+            $historyQuery = MoodboardHistory::query()
+                ->where('moodboard_id', $moodboard_id);
+
+            if ($version !== null) {
+                $historyQuery->where('version', $version);
+            } else {
+                $historyQuery->orderByDesc('version');
+            }
+
+            $historyRow = $historyQuery->first();
+
+            if (!$historyRow) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Moodboard version not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'moodboardId' => $moodboard->board_id,
+                    'name' => $moodboard->name,
+                    'description' => $moodboard->description,
+                    'settings' => $moodboard->settings,
+                    'data' => $historyRow->state_json,
+                    'version' => (int) $historyRow->version,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка загрузки moodboard',
             ], 500);
         }
     }
