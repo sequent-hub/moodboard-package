@@ -7,12 +7,17 @@ use Futurello\MoodBoard\Models\MoodboardHistory;
 
 class MoodboardHistoryRepository
 {
-    public function findLatestByMoodboardId(string $moodboardId): ?MoodboardHistory
+    public function findLatestByMoodboardId(string $moodboardId, bool $forUpdate = false): ?MoodboardHistory
     {
-        return MoodboardHistory::query()
+        $query = MoodboardHistory::query()
             ->where('moodboard_id', $moodboardId)
-            ->orderByDesc('version')
-            ->first();
+            ->orderByDesc('version');
+
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
     }
 
     public function append(

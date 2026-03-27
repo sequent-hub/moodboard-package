@@ -3,6 +3,7 @@
 namespace Futurello\MoodBoard\Services;
 
 use Futurello\MoodBoard\Repositories\MoodboardHistoryRepository;
+use Illuminate\Support\Facades\DB;
 
 class MoodboardHistoryService
 {
@@ -17,32 +18,34 @@ class MoodboardHistoryService
         string $actionType = 'command_execute',
         ?string $createdBy = null
     ): array {
-        $stateHash = $this->buildStateHash($state);
-        $latest = $this->historyRepository->findLatestByMoodboardId($moodboardId);
+        return DB::transaction(function () use ($moodboardId, $state, $actionType, $createdBy): array {
+            $stateHash = $this->buildStateHash($state);
+            $latest = $this->historyRepository->findLatestByMoodboardId($moodboardId, true);
 
-        if ($latest && hash_equals($latest->state_hash, $stateHash)) {
+            if ($latest && hash_equals($latest->state_hash, $stateHash)) {
+                return [
+                    'deduplicated' => true,
+                    'historyVersion' => (int) $latest->version,
+                ];
+            }
+
+            $nextVersion = $latest ? ((int) $latest->version + 1) : 1;
+
+            $this->historyRepository->append(
+                $moodboardId,
+                $nextVersion,
+                $state,
+                $stateHash,
+                $actionType,
+                now(),
+                $createdBy
+            );
+
             return [
-                'deduplicated' => true,
-                'historyVersion' => (int) $latest->version,
+                'deduplicated' => false,
+                'historyVersion' => $nextVersion,
             ];
-        }
-
-        $nextVersion = $latest ? ((int) $latest->version + 1) : 1;
-
-        $this->historyRepository->append(
-            $moodboardId,
-            $nextVersion,
-            $state,
-            $stateHash,
-            $actionType,
-            now(),
-            $createdBy
-        );
-
-        return [
-            'deduplicated' => false,
-            'historyVersion' => $nextVersion,
-        ];
+        });
     }
 
     private function buildStateHash(array $state): string
