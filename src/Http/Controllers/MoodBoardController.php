@@ -4,7 +4,7 @@ namespace Futurello\MoodBoard\Http\Controllers;
 
 use Futurello\MoodBoard\Models\MoodBoard;
 use Futurello\MoodBoard\Models\Image;
-use Futurello\MoodBoard\Models\MoodboardHistory;
+use Futurello\MoodBoard\Services\MoodboardHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +13,11 @@ use Illuminate\Routing\Controller;
 
 class MoodBoardController extends Controller
 {
+    public function __construct(
+        private readonly MoodboardHistoryService $moodboardHistoryService
+    ) {
+    }
+
     /**
      * Handle OPTIONS requests for CORS
      */
@@ -109,47 +114,17 @@ class MoodBoardController extends Controller
             $actionType = (string) $request->input('actionType', 'command_execute');
             $createdBy = $request->input('createdBy');
 
-            $encodedState = json_encode(
+            $saveResult = $this->moodboardHistoryService->saveSnapshot(
+                $moodboardId,
                 $state,
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION
+                $actionType,
+                $createdBy
             );
-
-            if ($encodedState === false) {
-                $encodedState = '{}';
-            }
-
-            $stateHash = hash('sha256', $encodedState);
-
-            $latest = MoodboardHistory::query()
-                ->where('moodboard_id', $moodboardId)
-                ->orderByDesc('version')
-                ->first();
-
-            if ($latest && hash_equals($latest->state_hash, $stateHash)) {
-                return response()->json([
-                    'success' => true,
-                    'deduplicated' => true,
-                    'historyVersion' => (int) $latest->version,
-                    'moodboardId' => $moodboardId,
-                ]);
-            }
-
-            $nextVersion = $latest ? ((int) $latest->version + 1) : 1;
-
-            MoodboardHistory::query()->create([
-                'moodboard_id' => $moodboardId,
-                'version' => $nextVersion,
-                'state_json' => $state,
-                'state_hash' => $stateHash,
-                'action_type' => $actionType,
-                'created_at' => now(),
-                'created_by' => $createdBy,
-            ]);
 
             return response()->json([
                 'success' => true,
-                'deduplicated' => false,
-                'historyVersion' => $nextVersion,
+                'deduplicated' => $saveResult['deduplicated'],
+                'historyVersion' => $saveResult['historyVersion'],
                 'moodboardId' => $moodboardId,
             ]);
         } catch (\Exception $e) {
