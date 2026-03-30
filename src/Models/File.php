@@ -5,6 +5,7 @@ namespace Futurello\MoodBoard\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use LogicException;
 
 class File extends Model
 {
@@ -64,10 +65,8 @@ class File extends Model
     {
         parent::boot();
 
-        static::deleting(function ($file) {
-            if (Storage::disk('s3')->exists($file->path)) {
-                Storage::disk('s3')->delete($file->path);
-            }
+        static::deleting(function (): void {
+            throw new LogicException('File deletion is disabled by policy.');
         });
     }
 }

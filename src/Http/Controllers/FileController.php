@@ -198,6 +198,12 @@ class FileController extends Controller
      */
     public function destroy($id)
     {
+        return response()->json([
+            'success' => false,
+            'message' => 'File deletion is disabled by policy',
+        ], 410);
+
+        /*
         try {
             $file = File::findOrFail($id);
             $file->delete();
@@ -217,6 +223,7 @@ class FileController extends Controller
                 'message' => 'Ошибка удаления файла: ' . $e->getMessage()
             ], 500);
         }
+        */
     }
 
 }

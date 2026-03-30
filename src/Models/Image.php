@@ -5,6 +5,7 @@ namespace Futurello\MoodBoard\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use LogicException;
 
 class Image extends Model
 {
@@ -26,11 +27,8 @@ class Image extends Model
             }
         });
 
-        static::deleting(function ($image) {
-            // Удаляем файл при удалении записи
-            if (Storage::disk('s3')->exists($image->path)) {
-                Storage::disk('s3')->delete($image->path);
-            }
+        static::deleting(function (): void {
+            throw new LogicException('Image deletion is disabled by policy.');
         });
     }
 

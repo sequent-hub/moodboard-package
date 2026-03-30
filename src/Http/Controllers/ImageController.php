@@ -194,6 +194,12 @@ class ImageController extends Controller
 
     public function destroy(string $id)
     {
+        return response()->json([
+            'success' => false,
+            'message' => 'Image deletion is disabled by policy',
+        ], 410);
+
+        /*
         try {
             $image = Image::findOrFail($id);
             $image->delete();
@@ -213,6 +219,7 @@ class ImageController extends Controller
                 'message' => 'Ошибка удаления изображения'
             ], 500);
         }
+        */
     }
 
     public function index()
@@ -249,6 +256,12 @@ class ImageController extends Controller
 
     public function bulkDelete(Request $request)
     {
+        return response()->json([
+            'success' => false,
+            'message' => 'Image bulk deletion is disabled by policy',
+        ], 410);
+
+        /*
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'string|exists:images,id'
@@ -273,6 +286,7 @@ class ImageController extends Controller
                 'message' => 'Ошибка массового удаления'
             ], 500);
         }
+        */
     }
 
     /**
