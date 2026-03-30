@@ -80,12 +80,12 @@ class ImageController extends Controller
 
             // Создаем директорию если не существует
             $directory = dirname($path);
-            if (!Storage::exists($directory)) {
-                Storage::makeDirectory($directory);
+            if (!Storage::disk('s3')->exists($directory)) {
+                Storage::disk('s3')->makeDirectory($directory);
             }
 
             // Сохраняем файл
-            Storage::put($path, file_get_contents($file));
+            Storage::disk('s3')->put($path, file_get_contents($file));
 
             // Получаем размеры изображения
             $imageInfo = getimagesize($file->getPathname());
@@ -170,14 +170,14 @@ class ImageController extends Controller
         try {
             $image = Image::findOrFail($id);
             
-            if (!Storage::exists($image->path)) {
+            if (!Storage::disk('s3')->exists($image->path)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Файл не найден'
                 ], 404);
             }
 
-            return Storage::response($image->path, $image->original_name, [
+            return Storage::disk('s3')->response($image->path, $image->original_name, [
                 'Content-Type' => $image->mime_type,
                 'Cache-Control' => 'public, max-age=31536000'
             ]);

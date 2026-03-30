@@ -28,8 +28,8 @@ class Image extends Model
 
         static::deleting(function ($image) {
             // Удаляем файл при удалении записи
-            if (Storage::exists($image->path)) {
-                Storage::delete($image->path);
+            if (Storage::disk('s3')->exists($image->path)) {
+                Storage::disk('s3')->delete($image->path);
             }
         });
     }
@@ -41,6 +41,6 @@ class Image extends Model
 
     public function getPublicUrlAttribute()
     {
-        return Storage::url($this->path);
+        return Storage::disk('s3')->url($this->path);
     }
 }

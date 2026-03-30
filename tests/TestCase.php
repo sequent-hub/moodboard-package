@@ -54,6 +54,15 @@ abstract class TestCase extends OrchestraTestCase
             'visibility' => 'public',
             'throw' => false,
         ]);
+
+        // In tests we map s3 disk to a local folder.
+        $app['config']->set('filesystems.disks.s3', [
+            'driver' => 'local',
+            'root' => storage_path('framework/testing/disks/s3'),
+            'url' => ((string) $this->getTestingEnv('APP_URL', 'http://localhost')) . '/storage/s3',
+            'visibility' => 'public',
+            'throw' => false,
+        ]);
     }
 
     protected function setUp(): void

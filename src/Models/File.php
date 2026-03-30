@@ -29,7 +29,7 @@ class File extends Model
      */
     public function getUrlAttribute()
     {
-        return Storage::disk('public')->url($this->path);
+        return Storage::disk('s3')->url($this->path);
     }
 
     /**
@@ -65,8 +65,8 @@ class File extends Model
         parent::boot();
 
         static::deleting(function ($file) {
-            if (Storage::disk('public')->exists($file->path)) {
-                Storage::disk('public')->delete($file->path);
+            if (Storage::disk('s3')->exists($file->path)) {
+                Storage::disk('s3')->delete($file->path);
             }
         });
     }

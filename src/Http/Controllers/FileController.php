@@ -59,7 +59,7 @@ class FileController extends Controller
             }
 
             // Сохраняем файл
-            $path = $uploadedFile->storeAs('files', $filename, 'public');
+            $path = $uploadedFile->storeAs('files', $filename, 's3');
 
             // Создаем запись в БД
             $file = File::create([
@@ -176,14 +176,14 @@ class FileController extends Controller
         try {
             $file = File::findOrFail($id);
 
-            if (!Storage::disk('public')->exists($file->path)) {
+            if (!Storage::disk('s3')->exists($file->path)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Файл не найден на диске'
                 ], 404);
             }
 
-            return Storage::disk('public')->download($file->path, $file->name);
+            return Storage::disk('s3')->download($file->path, $file->name);
 
         } catch (\Exception $e) {
             return response()->json([
