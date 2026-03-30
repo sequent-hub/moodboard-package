@@ -32,8 +32,9 @@ class MoodBoardServiceProvider extends ServiceProvider
         $router->aliasMiddleware('moodboard.cors', CorsMiddleware::class);
         
         // Загружаем маршруты API с middleware
-        Route::middleware(['moodboard.cors'])
-            ->group(__DIR__.'/../Routes/api.php');
+        // Legacy routes file is intentionally disabled (kept for reference).
+        // Route::middleware(['moodboard.cors'])
+        //     ->group(__DIR__.'/../Routes/api.php');
         Route::middleware(['moodboard.cors'])
             ->group(__DIR__.'/../Routes/api_v2.php');
         
