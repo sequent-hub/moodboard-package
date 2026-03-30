@@ -2,7 +2,14 @@
 
 Официальный формат данных, согласованный с фронтендом. Бэкенд подстраивается под этот контракт.
 
-## Save — POST /api/moodboard/save
+> Migration note (`Было/Стало`): `docs/API_V2_WAS_BECAME.md`
+>
+> В этом документе старый контракт сохранен для истории. Целевой контракт для нового фронта: `v2`.
+
+## Save — Было/Стало
+
+- Было: `POST /api/moodboard/save`
+- Стало: `POST /api/v2/moodboard/metadata/save` + `POST /api/v2/moodboard/history/save`
 
 Фронтенд использует только одну схему:
 
@@ -53,7 +60,10 @@
 }
 ```
 
-## Load — GET /api/moodboard/load/{boardId} или GET /api/moodboard/{boardId}
+## Load — Было/Стало
+
+- Было: `GET /api/moodboard/load/{boardId}` или `GET /api/moodboard/{boardId}`
+- Стало: `GET /api/v2/moodboard/{moodboard_id}/{version?}`
 
 **Ожидаемый ответ:**
 

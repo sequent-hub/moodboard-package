@@ -9,30 +9,30 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
 {
     public function test_it_uploads_regular_and_metadata_png_and_files_are_accessible(): void
     {
-        $regularUpload = $this->post('/api/images/upload', [
+        $regularUpload = $this->post('/api/v2/images/upload', [
             'image' => UploadedFile::fake()->image('regular.png', 120, 80),
             'name' => 'Regular PNG',
         ])->assertOk()->assertJsonPath('success', true);
 
         $regularImageId = $this->assertUploadResponseContainsRequiredFields($regularUpload);
 
-        $metadataUpload = $this->post('/api/images/upload', [
+        $metadataUpload = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('metadata.png'),
             'name' => 'Metadata PNG',
         ])->assertOk()->assertJsonPath('success', true);
 
         $metadataImageId = $this->assertUploadResponseContainsRequiredFields($metadataUpload);
 
-        $regularFileResponse = $this->get("/api/images/{$regularImageId}/file")->assertOk();
+        $regularFileResponse = $this->get("/api/v2/images/{$regularImageId}/download")->assertOk();
         $this->assertFileResponseHasNonEmptyBody($regularFileResponse, 'Regular PNG file body is empty.');
 
-        $metadataFileResponse = $this->get("/api/images/{$metadataImageId}/file")->assertOk();
+        $metadataFileResponse = $this->get("/api/v2/images/{$metadataImageId}/download")->assertOk();
         $this->assertFileResponseHasNonEmptyBody($metadataFileResponse, 'Metadata PNG file body is empty.');
     }
 
     public function test_it_saves_and_loads_image_object_without_src_and_keeps_image_id(): void
     {
-        $imageId = $this->post('/api/images/upload', [
+        $imageId = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('single-board-metadata.png'),
             'name' => 'Single board metadata PNG',
         ])->assertOk()->json('data.imageId');
@@ -40,10 +40,15 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
         $this->assertNotEmpty($imageId);
 
         $boardId = 'board-image-single';
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Image board',
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'Image board',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'image-obj-1',
@@ -56,13 +61,13 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
                     ],
                 ],
             ],
-        ])->assertOk()->assertJsonPath('success', true);
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $loadResponse = $this->getJson("/api/moodboard/{$boardId}")
+        $loadResponse = $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        $objects = $loadResponse->json('data.objects');
+        $objects = $loadResponse->json('data.state.objects');
         $this->assertCount(1, $objects);
         $this->assertSame('image', $objects[0]['type']);
         $this->assertSame($imageId, $objects[0]['imageId'] ?? null);
@@ -70,12 +75,12 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
 
     public function test_it_persists_multiple_images_in_one_board_including_metadata_png(): void
     {
-        $regularImageId = $this->post('/api/images/upload', [
+        $regularImageId = $this->post('/api/v2/images/upload', [
             'image' => UploadedFile::fake()->image('multi-regular.png', 100, 60),
             'name' => 'Multi Regular',
         ])->assertOk()->json('data.imageId');
 
-        $metadataImageId = $this->post('/api/images/upload', [
+        $metadataImageId = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('multi-metadata.png'),
             'name' => 'Multi Metadata',
         ])->assertOk()->json('data.imageId');
@@ -84,10 +89,15 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
         $this->assertNotEmpty($metadataImageId);
 
         $boardId = 'board-image-multi';
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Multiple images board',
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'Multiple images board',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'img-obj-1',
@@ -109,13 +119,13 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
                     ],
                 ],
             ],
-        ])->assertOk()->assertJsonPath('success', true);
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $loadResponse = $this->getJson("/api/moodboard/{$boardId}")
+        $loadResponse = $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        $objects = $loadResponse->json('data.objects');
+        $objects = $loadResponse->json('data.state.objects');
         $this->assertCount(2, $objects);
 
         $ids = array_column($objects, 'imageId');
@@ -125,12 +135,12 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
 
     public function test_it_returns_validation_errors_for_upload_issues(): void
     {
-        $this->post('/api/images/upload', [], [
+        $this->post('/api/v2/images/upload', [], [
             'Accept' => 'application/json',
         ])->assertStatus(422);
 
         $unsupportedMime = UploadedFile::fake()->create('not-supported.svg', 10, 'image/svg+xml');
-        $this->post('/api/images/upload', [
+        $this->post('/api/v2/images/upload', [
             'image' => $unsupportedMime,
         ], [
             'Accept' => 'application/json',

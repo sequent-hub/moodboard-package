@@ -16,14 +16,14 @@ class FileApiContractTest extends TestCase
 
     public function test_it_returns_404_for_non_existing_file_on_show(): void
     {
-        $this->getJson('/api/files/not-existing-id')
+        $this->getJson('/api/v2/files/not-existing-id')
             ->assertStatus(404)
             ->assertJsonPath('success', false);
     }
 
-    public function test_it_returns_validation_error_on_invalid_update_payload(): void
+    public function test_it_returns_501_on_update_payload_for_v2_stub(): void
     {
-        $upload = $this->post('/api/files/upload', [
+        $upload = $this->post('/api/v2/files/upload', [
             'file' => \Illuminate\Http\UploadedFile::fake()->create('sample.txt', 10, 'text/plain'),
             'name' => 'Sample',
         ])->assertOk();
@@ -31,23 +31,23 @@ class FileApiContractTest extends TestCase
         $id = $upload->json('data.id');
         $this->assertNotEmpty($id);
 
-        $this->putJson("/api/files/{$id}", [
+        $this->putJson("/api/v2/files/{$id}", [
             'name' => str_repeat('x', 300),
-        ])->assertStatus(422)->assertJsonPath('success', false);
+        ])->assertStatus(501)->assertJsonPath('success', false);
     }
 
-    public function test_it_returns_500_for_non_existing_file_on_update_download_and_delete(): void
+    public function test_it_returns_501_for_update_delete_and_500_for_missing_download_record(): void
     {
-        $this->putJson('/api/files/not-existing-id', [
+        $this->putJson('/api/v2/files/not-existing-id', [
             'name' => 'X',
-        ])->assertStatus(500)->assertJsonPath('success', false);
+        ])->assertStatus(501)->assertJsonPath('success', false);
 
-        $this->get('/api/files/not-existing-id/download')
+        $this->get('/api/v2/files/not-existing-id/download')
             ->assertStatus(500)
             ->assertJsonPath('success', false);
 
-        $this->deleteJson('/api/files/not-existing-id')
-            ->assertStatus(500)
+        $this->deleteJson('/api/v2/files/not-existing-id')
+            ->assertStatus(501)
             ->assertJsonPath('success', false);
     }
 
@@ -63,7 +63,7 @@ class FileApiContractTest extends TestCase
             'hash' => 'missing-file-hash',
         ]);
 
-        $this->get("/api/files/{$file->id}/download")
+        $this->get("/api/v2/files/{$file->id}/download")
             ->assertStatus(404)
             ->assertJsonPath('success', false);
     }
@@ -75,10 +75,10 @@ class FileApiContractTest extends TestCase
         $first = \Illuminate\Http\UploadedFile::fake()->createWithContent('one.txt', $sameContent);
         $second = \Illuminate\Http\UploadedFile::fake()->createWithContent('two.txt', $sameContent);
 
-        $firstResp = $this->post('/api/files/upload', ['file' => $first, 'name' => 'One'])
+        $firstResp = $this->post('/api/v2/files/upload', ['file' => $first, 'name' => 'One'])
             ->assertOk()
             ->assertJsonPath('success', true);
-        $secondResp = $this->post('/api/files/upload', ['file' => $second, 'name' => 'Two'])
+        $secondResp = $this->post('/api/v2/files/upload', ['file' => $second, 'name' => 'Two'])
             ->assertOk()
             ->assertJsonPath('success', true);
 

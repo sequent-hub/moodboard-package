@@ -6,21 +6,29 @@ use Futurello\MoodBoard\Tests\Feature\Autosave\Support\AbstractAutosaveTestCase;
 
 class AutosaveCoreContractTest extends AbstractAutosaveTestCase
 {
-    public function test_it_requires_board_id_for_save_request(): void
+    public function test_it_requires_moodboard_id_for_metadata_save_request(): void
     {
-        $this->postJson('/api/moodboard/save', [
-            'boardData' => ['objects' => []],
-        ])->assertStatus(422);
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'name' => 'missing id',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
     }
 
-    public function test_it_returns_latest_saved_state_for_same_board_id(): void
+    public function test_it_returns_latest_history_state_for_same_moodboard_id(): void
     {
-        $boardId = 'board-autosave-core';
+        $moodboardId = 'board-autosave-core';
 
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Core autosave board',
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $moodboardId,
+            'name' => 'Core autosave board',
+            'settings' => ['backgroundColor' => '#fafafa'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $moodboardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'obj-v1',
@@ -30,12 +38,11 @@ class AutosaveCoreContractTest extends AbstractAutosaveTestCase
                     ],
                 ],
             ],
-        ])->assertOk()->assertJsonPath('success', true);
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Core autosave board',
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $moodboardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'obj-v2',
@@ -45,12 +52,12 @@ class AutosaveCoreContractTest extends AbstractAutosaveTestCase
                     ],
                 ],
             ],
-        ])->assertOk()->assertJsonPath('success', true);
+        ])->assertOk()->assertJsonPath('historyVersion', 2);
 
-        $this->getJson("/api/moodboard/{$boardId}")
+        $this->getJson("/api/v2/moodboard/{$moodboardId}")
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.objects.0.id', 'obj-v2')
-            ->assertJsonPath('data.objects.0.properties.content', 'v2');
+            ->assertJsonPath('data.state.objects.0.id', 'obj-v2')
+            ->assertJsonPath('data.state.objects.0.properties.content', 'v2');
     }
 }

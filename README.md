@@ -51,6 +51,30 @@ php artisan migrate
 
 ## API Endpoints
 
+> Переезд на v2: см. карту `Было/Стало` в `docs/API_V2_WAS_BECAME.md`.
+
+### Актуальные v2 endpoints
+
+#### MoodBoard (v2)
+
+- `POST /api/v2/moodboard/metadata/save` - Сохранение метаданных доски
+- `POST /api/v2/moodboard/history/save` - Сохранение состояния (истории)
+- `GET /api/v2/moodboard/{moodboard_id}/{version?}` - Загрузка актуальной или конкретной версии
+
+#### Images (v2)
+
+- `POST /api/v2/images/upload` - Загрузка изображения
+- `GET /api/v2/images/{imageId}` - Информация об изображении
+- `GET /api/v2/images/{imageId}/download` - Получение файла изображения
+
+#### Files (v2)
+
+- `POST /api/v2/files/upload` - Загрузка файла
+- `GET /api/v2/files/{fileId}` - Информация о файле
+- `GET /api/v2/files/{fileId}/download` - Скачивание файла
+
+### LEGACY (было, сохранено для истории)
+
 ### MoodBoard
 
 - `POST /api/moodboard/save` - Сохранение данных доски

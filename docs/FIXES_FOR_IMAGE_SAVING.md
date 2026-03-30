@@ -1,5 +1,7 @@
 # Исправления для сохранения изображений
 
+> Migration note (`Было/Стало`): `docs/API_V2_WAS_BECAME.md`
+
 ## Проблемы, которые были исправлены
 
 ### 1. ImageController::upload - Неправильный JSON ответ
@@ -71,7 +73,10 @@ moodboard/src/
 
 ### Тест загрузки изображения
 ```bash
-curl -X POST http://your-domain/api/images/upload \
+# Было:
+# curl -X POST http://your-domain/api/images/upload \
+# Стало:
+curl -X POST http://your-domain/api/v2/images/upload \
   -F "image=@test.jpg" \
   -F "name=Test Image"
 ```
@@ -83,7 +88,7 @@ curl -X POST http://your-domain/api/images/upload \
   "data": {
     "imageId": "uuid-here",
     "id": "uuid-here",
-    "url": "http://your-domain/api/images/uuid-here/file",
+    "url": "http://your-domain/api/v2/images/uuid-here/download",
     "name": "Test Image",
     "width": 1920,
     "height": 1080,
@@ -95,7 +100,10 @@ curl -X POST http://your-domain/api/images/upload \
 
 ### Тест CORS
 ```bash
-curl -X OPTIONS http://your-domain/api/images/upload \
+# Было:
+# curl -X OPTIONS http://your-domain/api/images/upload \
+# Стало:
+curl -X OPTIONS http://your-domain/api/v2/images/upload \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: Content-Type"
 ```

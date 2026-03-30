@@ -50,16 +50,14 @@ class MoodBoardFrontendPayloadRegressionTest extends TestCase
             ],
         ];
 
-        $this->postJson('/api/moodboard/save', $payload)
-            ->assertOk()
-            ->assertJsonPath('success', true);
+        $this->saveBoardStateV2($payload);
 
-        $this->getJson('/api/moodboard/load/board_abc123')
+        $this->getJson('/api/v2/moodboard/board_abc123')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.objects.0.id', 'obj_17480001')
-            ->assertJsonPath('data.objects.0.transform.pivotCompensated', false)
-            ->assertJsonPath('data.objects.0.transform.rotation', 45)
+            ->assertJsonPath('data.state.objects.0.id', 'obj_17480001')
+            ->assertJsonPath('data.state.objects.0.transform.pivotCompensated', false)
+            ->assertJsonPath('data.state.objects.0.transform.rotation', 45)
             ->assertJsonPath('data.settings.backgroundColor', '#F5F5F5')
             ->assertJsonPath('data.settings.grid.type', 'dot');
     }
@@ -118,15 +116,13 @@ class MoodBoardFrontendPayloadRegressionTest extends TestCase
             ],
         ];
 
-        $this->postJson('/api/moodboard/save', $payload)
+        $this->saveBoardStateV2($payload);
+
+        $resp = $this->getJson('/api/v2/moodboard/board_multi_types')
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        $resp = $this->getJson('/api/moodboard/load/board_multi_types')
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $objects = $resp->json('data.objects');
+        $objects = $resp->json('data.state.objects');
         $this->assertCount(3, $objects);
         $this->assertEquals('obj_17480002', $objects[0]['id']);
         $this->assertArrayHasKey('transform', $objects[0]);
@@ -155,14 +151,12 @@ class MoodBoardFrontendPayloadRegressionTest extends TestCase
             ],
         ];
 
-        $this->postJson('/api/moodboard/save', $payload)
-            ->assertOk()
-            ->assertJsonPath('success', true);
+        $this->saveBoardStateV2($payload);
 
-        $this->getJson('/api/moodboard/load/board_new')
+        $this->getJson('/api/v2/moodboard/board_new')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.objects', [])
+            ->assertJsonPath('data.state.objects', [])
             ->assertJsonPath('data.settings.backgroundColor', '#F5F5F5');
     }
 
@@ -189,11 +183,32 @@ class MoodBoardFrontendPayloadRegressionTest extends TestCase
             'settings' => ['backgroundColor' => '#fff', 'zoom' => ['default' => 1.0]],
         ];
 
-        $this->postJson('/api/moodboard/save', $payload)->assertOk();
+        $this->saveBoardStateV2($payload);
 
-        $this->getJson('/api/moodboard/load/board_no_rotation')
+        $this->getJson('/api/v2/moodboard/board_no_rotation')
             ->assertOk()
-            ->assertJsonPath('data.objects.0.transform.pivotCompensated', false)
-            ->assertJsonPath('data.objects.0.transform', ['pivotCompensated' => false]);
+            ->assertJsonPath('data.state.objects.0.transform.pivotCompensated', false)
+            ->assertJsonPath('data.state.objects.0.transform', ['pivotCompensated' => false]);
+    }
+
+    private function saveBoardStateV2(array $payload): void
+    {
+        $boardId = (string) $payload['boardId'];
+        $boardData = $payload['boardData'] ?? [];
+        $settings = $payload['settings'] ?? [];
+
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => (string) ($boardData['name'] ?? 'Untitled board'),
+            'description' => $boardData['description'] ?? null,
+            'settings' => is_array($settings) ? $settings : [],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
+                'objects' => $boardData['objects'] ?? [],
+            ],
+        ])->assertOk()->assertJsonPath('success', true);
     }
 }

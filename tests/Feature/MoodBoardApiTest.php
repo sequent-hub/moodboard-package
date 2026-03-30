@@ -6,12 +6,21 @@ use Futurello\MoodBoard\Tests\TestCase;
 
 class MoodBoardApiTest extends TestCase
 {
-    public function test_it_saves_and_loads_board_data(): void
+    public function test_it_saves_metadata_history_and_loads_board_data(): void
     {
+        $boardId = 'board-main-flow';
+
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'Main board',
+            'settings' => [
+                'backgroundColor' => '#ffffff',
+            ],
+        ])->assertOk()->assertJsonPath('success', true);
+
         $payload = [
-            'boardId' => 'board-main-flow',
-            'boardData' => [
-                'name' => 'Main board',
+            'moodboardId' => $boardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'obj-1',
@@ -21,86 +30,50 @@ class MoodBoardApiTest extends TestCase
                     ],
                 ],
             ],
-            'settings' => [
-                'backgroundColor' => '#ffffff',
-            ],
         ];
 
-        $this->postJson('/api/moodboard/save', $payload)
+        $this->postJson('/api/v2/moodboard/history/save', $payload)
             ->assertOk()
-            ->assertJsonPath('success', true);
+            ->assertJsonPath('historyVersion', 1);
 
-        $this->getJson('/api/moodboard/load/board-main-flow')
+        $this->getJson('/api/v2/moodboard/board-main-flow')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.id', 'board-main-flow')
-            ->assertJsonPath('data.objects.0.id', 'obj-1')
+            ->assertJsonPath('data.moodboardId', 'board-main-flow')
+            ->assertJsonPath('data.state.objects.0.id', 'obj-1')
             ->assertJsonPath('data.settings.backgroundColor', '#ffffff');
     }
 
-    public function test_it_creates_new_board_on_load_when_missing(): void
+    public function test_it_returns_404_on_load_when_board_missing(): void
     {
-        $this->getJson('/api/moodboard/load/new-board-id')
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.id', 'new-board-id')
-            ->assertJsonPath('data.objects', []);
-    }
-
-    public function test_it_lists_duplicates_and_deletes_board(): void
-    {
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => 'board-crud',
-            'boardData' => [
-                'name' => 'CRUD board',
-                'objects' => [],
-            ],
-        ])->assertOk();
-
-        $this->getJson('/api/moodboard/list')
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonFragment(['id' => 'board-crud']);
-
-        $this->getJson('/api/moodboard/show/board-crud')
-            ->assertOk()
-            ->assertJsonPath('data.id', 'board-crud');
-
-        $duplicate = $this->postJson('/api/moodboard/duplicate/board-crud')
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->json('data.id');
-
-        $this->assertNotSame('board-crud', $duplicate);
-
-        $this->deleteJson('/api/moodboard/delete/board-crud')
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $this->getJson('/api/moodboard/show/board-crud')
+        $this->getJson('/api/v2/moodboard/new-board-id')
             ->assertStatus(404)
             ->assertJsonPath('success', false);
     }
 
-    public function test_it_returns_object_type_statistics(): void
+    public function test_it_returns_not_implemented_for_compatibility_routes_on_v2(): void
     {
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => 'board-stats',
-            'boardData' => [
-                'name' => 'Stats board',
-                'objects' => [
-                    ['id' => 'n1', 'type' => 'note'],
-                    ['id' => 'n2', 'type' => 'note'],
-                    ['id' => 'i1', 'type' => 'image'],
-                ],
-            ],
-        ])->assertOk();
+        $this->getJson('/api/v2/moodboard/list')
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
 
-        $this->getJson('/api/moodboard/board-stats/images/stats')
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.total', 3)
-            ->assertJsonPath('data.by_type.note', 2)
-            ->assertJsonPath('data.by_type.image', 1);
+        $this->getJson('/api/v2/moodboard/show/board-crud')
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
+
+        $this->postJson('/api/v2/moodboard/duplicate/board-crud')
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
+
+        $this->deleteJson('/api/v2/moodboard/delete/board-crud')
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_it_returns_not_implemented_for_stats_route_on_v2(): void
+    {
+        $this->getJson('/api/v2/moodboard/board-stats/images/stats')
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
     }
 }

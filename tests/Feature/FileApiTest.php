@@ -14,9 +14,9 @@ class FileApiTest extends TestCase
         Storage::fake('public');
     }
 
-    public function test_it_uploads_updates_downloads_and_deletes_file(): void
+    public function test_it_uploads_reads_and_downloads_file_on_v2(): void
     {
-        $uploadResponse = $this->post('/api/files/upload', [
+        $uploadResponse = $this->post('/api/v2/files/upload', [
             'file' => UploadedFile::fake()->create('sample.txt', 20, 'text/plain'),
             'name' => 'Sample file',
         ])->assertOk()->assertJsonPath('success', true);
@@ -24,27 +24,38 @@ class FileApiTest extends TestCase
         $fileId = $uploadResponse->json('data.id');
         $this->assertNotEmpty($fileId);
 
-        $this->getJson("/api/files/{$fileId}")
+        $this->getJson("/api/v2/files/{$fileId}")
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.id', $fileId)
             ->assertJsonPath('data.name', 'Sample file');
 
-        $this->putJson("/api/files/{$fileId}", [
-            'name' => 'Renamed file',
+        $this->get("/api/v2/files/{$fileId}/download")
+            ->assertOk();
+    }
+
+    public function test_it_returns_not_implemented_for_update_and_delete_on_v2(): void
+    {
+        $uploadResponse = $this->post('/api/v2/files/upload', [
+            'file' => UploadedFile::fake()->create('sample.txt', 20, 'text/plain'),
+            'name' => 'Sample file',
         ])->assertOk()->assertJsonPath('success', true);
 
-        $this->get("/api/files/{$fileId}/download")
-            ->assertOk();
+        $fileId = $uploadResponse->json('data.id');
+        $this->assertNotEmpty($fileId);
 
-        $this->deleteJson("/api/files/{$fileId}")
-            ->assertOk()
-            ->assertJsonPath('success', true);
+        $this->putJson("/api/v2/files/{$fileId}", [
+            'name' => 'Renamed file',
+        ])->assertStatus(501)->assertJsonPath('success', false);
+
+        $this->deleteJson("/api/v2/files/{$fileId}")
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
     }
 
     public function test_it_validates_upload_request(): void
     {
-        $this->postJson('/api/files/upload', [])
+        $this->postJson('/api/v2/files/upload', [])
             ->assertStatus(422)
             ->assertJsonPath('success', false);
     }

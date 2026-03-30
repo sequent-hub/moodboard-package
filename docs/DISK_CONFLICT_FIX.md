@@ -1,5 +1,7 @@
 # Исправление конфликта дисков в FileController
 
+> Migration note (`Было/Стало`): `docs/API_V2_WAS_BECAME.md`
+
 ## Описание проблемы
 
 В версии 1.0.4 пакета `futurello/moodboard` была обнаружена критическая ошибка конфликта дисков при работе с файлами:
@@ -96,7 +98,10 @@ if (Storage::disk('public')->exists($file->path)) {
 ls -la storage/app/public/files/
 
 # Проверить API скачивания
-curl http://your-domain/api/files/{id}/download
+# Было:
+# curl http://your-domain/api/files/{id}/download
+# Стало:
+curl http://your-domain/api/v2/files/{id}/download
 ```
 
 ### Проверка изображений (не изменилось):
@@ -105,7 +110,10 @@ curl http://your-domain/api/files/{id}/download
 ls -la storage/app/images/
 
 # Проверить API изображений
-curl http://your-domain/api/images/{id}/file
+# Было:
+# curl http://your-domain/api/images/{id}/file
+# Стало:
+curl http://your-domain/api/v2/images/{id}/download
 ```
 
 ## Обновление в проектах

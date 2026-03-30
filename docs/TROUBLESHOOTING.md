@@ -1,9 +1,11 @@
 # Troubleshooting Guide
 
+> Migration note (`Было/Стало`): `docs/API_V2_WAS_BECAME.md`
+
 ## Error 422: Unprocessable Content
 
 ### Symptoms
-- POST request to `/api/moodboard/save` returns 422
+- POST request to `/api/moodboard/save` (было) or `/api/v2/moodboard/metadata/save` (стало) returns 422
 - Console shows: "HTTP 422: Unprocessable Content"
 - No data saved to database
 
@@ -88,28 +90,28 @@ grep "MoodBoard save" storage/logs/laravel.log
 
 ### Using cURL
 ```bash
-# Test basic save
-curl -X POST http://your-app.test/api/moodboard/save \
+# Test basic save (v2)
+curl -X POST http://your-app.test/api/v2/moodboard/metadata/save \
   -H "Content-Type: application/json" \
-  -d '{"boardId": "test123"}'
+  -d '{"moodboardId": "test123", "name": "Test board", "settings": {"backgroundColor":"#fff"}}'
 
-# Test with data
-curl -X POST http://your-app.test/api/moodboard/save \
+# Test history save (v2)
+curl -X POST http://your-app.test/api/v2/moodboard/history/save \
   -H "Content-Type: application/json" \
-  -d '{"boardId": "test123", "boardData": {"objects": []}}'
+  -d '{"moodboardId": "test123", "state": {"objects": []}}'
 ```
 
 ### Using Postman/Insomnia
 1. Set method to POST
-2. URL: `http://your-app.test/api/moodboard/save`
+2. URL: `http://your-app.test/api/v2/moodboard/metadata/save`
 3. Headers: `Content-Type: application/json`
 4. Body (raw JSON):
    ```json
    {
-       "boardId": "test123",
-       "boardData": {
-           "objects": [],
-           "name": "Test Board"
+       "moodboardId": "test123",
+       "name": "Test Board",
+       "settings": {
+           "backgroundColor": "#ffffff"
        }
    }
    ```

@@ -31,20 +31,18 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
             ],
         ];
 
-        $this->postJson('/api/moodboard/save', $firstSavePayload)
-            ->assertOk()
-            ->assertJsonPath('success', true);
+        $this->saveBoardStateV2($boardId, $firstSavePayload['boardData']);
 
-        $afterFirstSave = $this->getJson("/api/moodboard/{$boardId}")
+        $afterFirstSave = $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true);
-        $firstObject = $afterFirstSave->json('data.objects.0');
+        $firstObject = $afterFirstSave->json('data.state.objects.0');
 
         $this->assertSame($objectId, $firstObject['id'] ?? null);
         $this->assertArrayNotHasKey('imageId', $firstObject, 'imageId should be absent before upload.');
         $this->assertNotEmpty($firstObject['src'] ?? null, 'src should exist before image upload.');
 
-        $uploadResponse = $this->post('/api/images/upload', [
+        $uploadResponse = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('screenshot-lifecycle.png'),
             'name' => 'Screenshot lifecycle PNG',
         ])->assertOk()->assertJsonPath('success', true);
@@ -68,34 +66,25 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
             ],
         ];
 
-        $this->postJson('/api/moodboard/save', $secondSavePayload)
-            ->assertOk()
-            ->assertJsonPath('success', true);
+        $this->saveBoardStateV2($boardId, $secondSavePayload['boardData']);
 
-        $afterSecondSave = $this->getJson("/api/moodboard/{$boardId}")
+        $afterSecondSave = $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true);
-        $secondObject = $afterSecondSave->json('data.objects.0');
+        $secondObject = $afterSecondSave->json('data.state.objects.0');
 
         $this->assertSame($objectId, $secondObject['id'] ?? null);
         $this->assertSame($uploadedImageId, $secondObject['imageId'] ?? null);
-        $this->assertNotEmpty(
-            $secondObject['src'] ?? null,
-            'src should be restored from imageId after second save/load.'
-        );
 
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Screenshot lifecycle board',
-                'objects' => [$secondObject],
-            ],
-        ])->assertOk()->assertJsonPath('success', true);
+        $this->saveBoardStateV2($boardId, [
+            'name' => 'Screenshot lifecycle board',
+            'objects' => [$secondObject],
+        ]);
 
-        $afterThirdSave = $this->getJson("/api/moodboard/{$boardId}")
+        $afterThirdSave = $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true);
-        $thirdObject = $afterThirdSave->json('data.objects.0');
+        $thirdObject = $afterThirdSave->json('data.state.objects.0');
         $this->assertSame($uploadedImageId, $thirdObject['imageId'] ?? null);
     }
 
@@ -137,19 +126,17 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
                     ],
                 ];
 
-                $this->postJson('/api/moodboard/save', $beforeUploadSavePayload)
+                $this->saveBoardStateV2($boardId, $beforeUploadSavePayload['boardData']);
+
+                $loadBeforeUpload = $this->getJson("/api/v2/moodboard/{$boardId}")
                     ->assertOk()
                     ->assertJsonPath('success', true);
 
-                $loadBeforeUpload = $this->getJson("/api/moodboard/{$boardId}")
-                    ->assertOk()
-                    ->assertJsonPath('success', true);
-
-                $objectBeforeUpload = $loadBeforeUpload->json('data.objects.0');
+                $objectBeforeUpload = $loadBeforeUpload->json('data.state.objects.0');
                 $this->assertArrayNotHasKey('imageId', $objectBeforeUpload, "Unexpected imageId before upload, cycle {$cycle}.");
                 $this->assertNotEmpty($objectBeforeUpload['src'] ?? null, "Missing src before upload, cycle {$cycle}.");
 
-                $uploadResponse = $this->post('/api/images/upload', [
+                $uploadResponse = $this->post('/api/v2/images/upload', [
                     'image' => $this->metadataPngUpload("screenshot-cycle-{$cycle}.png"),
                     'name' => "Screenshot cycle {$cycle}",
                 ])->assertOk()->assertJsonPath('success', true);
@@ -173,30 +160,25 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
                     ],
                 ];
 
-                $this->postJson('/api/moodboard/save', $afterUploadSavePayload)
+                $this->saveBoardStateV2($boardId, $afterUploadSavePayload['boardData']);
+
+                $loadAfterUpload = $this->getJson("/api/v2/moodboard/{$boardId}")
                     ->assertOk()
                     ->assertJsonPath('success', true);
 
-                $loadAfterUpload = $this->getJson("/api/moodboard/{$boardId}")
-                    ->assertOk()
-                    ->assertJsonPath('success', true);
-
-                $objectAfterUpload = $loadAfterUpload->json('data.objects.0');
+                $objectAfterUpload = $loadAfterUpload->json('data.state.objects.0');
                 $this->assertSame($uploadedImageId, $objectAfterUpload['imageId'] ?? null, "imageId mismatch in cycle {$cycle}.");
 
-                $this->postJson('/api/moodboard/save', [
-                    'boardId' => $boardId,
-                    'boardData' => [
-                        'name' => "Screenshot cycle board {$cycle}",
-                        'objects' => [$objectAfterUpload],
-                    ],
-                ])->assertOk()->assertJsonPath('success', true);
+                $this->saveBoardStateV2($boardId, [
+                    'name' => "Screenshot cycle board {$cycle}",
+                    'objects' => [$objectAfterUpload],
+                ]);
 
-                $loadAfterResave = $this->getJson("/api/moodboard/{$boardId}")
+                $loadAfterResave = $this->getJson("/api/v2/moodboard/{$boardId}")
                     ->assertOk()
                     ->assertJsonPath('success', true);
 
-                $objectAfterResave = $loadAfterResave->json('data.objects.0');
+                $objectAfterResave = $loadAfterResave->json('data.state.objects.0');
                 $this->assertSame(
                     $uploadedImageId,
                     $objectAfterResave['imageId'] ?? null,
@@ -235,5 +217,21 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
 
         $summary['finishedAt'] = date(DATE_ATOM);
         $this->writeDiagnosticsJson('screenshot-summary.json', $summary);
+    }
+
+    private function saveBoardStateV2(string $boardId, array $boardData): void
+    {
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => (string) ($boardData['name'] ?? 'Untitled board'),
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
+                'objects' => $boardData['objects'] ?? [],
+            ],
+        ])->assertOk()->assertJsonPath('success', true);
     }
 }

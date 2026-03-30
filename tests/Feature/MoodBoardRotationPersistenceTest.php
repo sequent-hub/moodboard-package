@@ -8,10 +8,17 @@ class MoodBoardRotationPersistenceTest extends TestCase
 {
     public function test_it_persists_object_transform_rotation_after_save_and_load(): void
     {
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => 'board-rotation',
-            'boardData' => [
-                'name' => 'Rotation board',
+        $boardId = 'board-rotation';
+
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'Rotation board',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'obj-rotation',
@@ -30,13 +37,13 @@ class MoodBoardRotationPersistenceTest extends TestCase
                     ],
                 ],
             ],
-        ])->assertOk()->assertJsonPath('success', true);
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $this->getJson('/api/moodboard/load/board-rotation')
+        $this->getJson('/api/v2/moodboard/board-rotation')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.objects.0.id', 'obj-rotation')
-            ->assertJsonPath('data.objects.0.transform.pivotCompensated', false)
-            ->assertJsonPath('data.objects.0.transform.rotation', 45);
+            ->assertJsonPath('data.state.objects.0.id', 'obj-rotation')
+            ->assertJsonPath('data.state.objects.0.transform.pivotCompensated', false)
+            ->assertJsonPath('data.state.objects.0.transform.rotation', 45);
     }
 }

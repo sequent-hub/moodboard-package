@@ -1,5 +1,24 @@
 # MoodBoard API Documentation
 
+> Migration note (`Было/Стало`): `docs/API_V2_WAS_BECAME.md`
+>
+> Ниже сохранен legacy-контент для истории. Для новых интеграций используйте `v2`.
+
+## v2 (стало)
+
+### POST /api/v2/moodboard/metadata/save
+Сохраняет метаданные доски.
+
+### POST /api/v2/moodboard/history/save
+Сохраняет состояние доски в историю версий.
+
+### GET /api/v2/moodboard/{moodboard_id}/{version?}
+Возвращает актуальную или указанную версию доски.
+
+---
+
+## LEGACY (было)
+
 ## Endpoints
 
 ### POST /api/moodboard/save

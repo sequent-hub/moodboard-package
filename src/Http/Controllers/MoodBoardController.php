@@ -509,7 +509,7 @@ class MoodBoardController extends Controller
             return route('images.file', $imageId);
         } catch (\Exception $e) {
             // Если маршрут не найден, возвращаем базовый URL
-            return url("/api/images/{$imageId}/file");
+            return url("/api/v2/images/{$imageId}/download");
         }
     }
 }

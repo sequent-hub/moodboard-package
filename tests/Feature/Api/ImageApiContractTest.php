@@ -17,19 +17,19 @@ class ImageApiContractTest extends TestCase
 
     public function test_it_returns_404_for_non_existing_image_on_show(): void
     {
-        $this->getJson('/api/images/not-existing-id')
+        $this->getJson('/api/v2/images/not-existing-id')
             ->assertStatus(404)
             ->assertJsonPath('success', false);
     }
 
-    public function test_it_returns_500_for_non_existing_image_on_file_and_destroy(): void
+    public function test_it_returns_500_for_non_existing_image_on_download_and_501_on_destroy(): void
     {
-        $this->get('/api/images/not-existing-id/file')
+        $this->get('/api/v2/images/not-existing-id/download')
             ->assertStatus(500)
             ->assertJsonPath('success', false);
 
-        $this->deleteJson('/api/images/not-existing-id')
-            ->assertStatus(500)
+        $this->deleteJson('/api/v2/images/not-existing-id')
+            ->assertStatus(501)
             ->assertJsonPath('success', false);
     }
 
@@ -46,19 +46,19 @@ class ImageApiContractTest extends TestCase
             'hash' => 'missing-physical-file',
         ]);
 
-        $this->get("/api/images/{$image->id}/file")
+        $this->get("/api/v2/images/{$image->id}/download")
             ->assertStatus(404)
             ->assertJsonPath('success', false);
     }
 
-    public function test_it_validates_bulk_delete_payload(): void
+    public function test_it_returns_501_for_bulk_delete_payload_on_v2(): void
     {
-        $this->postJson('/api/images/bulk-delete', [])
-            ->assertStatus(422);
+        $this->postJson('/api/v2/images/bulk-delete', [])
+            ->assertStatus(501);
 
-        $this->postJson('/api/images/bulk-delete', [
+        $this->postJson('/api/v2/images/bulk-delete', [
             'ids' => ['not-existing-id'],
-        ])->assertStatus(422);
+        ])->assertStatus(501);
     }
 
     public function test_it_reuses_existing_image_for_same_binary_content(): void
@@ -74,12 +74,12 @@ class ImageApiContractTest extends TestCase
         $firstImage = new UploadedFile($tmpPath, 'dedup-a.png', 'image/png', null, true);
         $secondImage = new UploadedFile($tmpPath, 'dedup-b.png', 'image/png', null, true);
 
-        $firstResponse = $this->post('/api/images/upload', [
+        $firstResponse = $this->post('/api/v2/images/upload', [
             'image' => $firstImage,
             'name' => 'Dedup A',
         ])->assertOk()->assertJsonPath('success', true);
 
-        $secondResponse = $this->post('/api/images/upload', [
+        $secondResponse = $this->post('/api/v2/images/upload', [
             'image' => $secondImage,
             'name' => 'Dedup B',
         ])->assertOk()->assertJsonPath('success', true);

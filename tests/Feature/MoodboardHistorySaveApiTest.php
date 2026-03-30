@@ -10,14 +10,14 @@ class MoodboardHistorySaveApiTest extends TestCase
 {
     public function test_history_save_requires_moodboard_id_and_state(): void
     {
-        $this->postJson('/api/moodboard/history/save', [])
+        $this->postJson('/api/v2/moodboard/history/save', [])
             ->assertStatus(422)
             ->assertJsonPath('success', false);
     }
 
     public function test_history_save_creates_first_version(): void
     {
-        $response = $this->postJson('/api/moodboard/history/save', [
+        $response = $this->postJson('/api/v2/moodboard/history/save', [
             'moodboardId' => 'mb-history-v1',
             'state' => [
                 'objects' => [
@@ -49,12 +49,12 @@ class MoodboardHistorySaveApiTest extends TestCase
             ],
         ];
 
-        $this->postJson('/api/moodboard/history/save', $payload)
+        $this->postJson('/api/v2/moodboard/history/save', $payload)
             ->assertOk()
             ->assertJsonPath('historyVersion', 1)
             ->assertJsonPath('deduplicated', false);
 
-        $this->postJson('/api/moodboard/history/save', $payload)
+        $this->postJson('/api/v2/moodboard/history/save', $payload)
             ->assertOk()
             ->assertJsonPath('historyVersion', 1)
             ->assertJsonPath('deduplicated', true);
@@ -70,7 +70,7 @@ class MoodboardHistorySaveApiTest extends TestCase
     {
         $moodboardId = 'mb-history-increment';
 
-        $this->postJson('/api/moodboard/history/save', [
+        $this->postJson('/api/v2/moodboard/history/save', [
             'moodboardId' => $moodboardId,
             'state' => [
                 'objects' => [
@@ -79,7 +79,7 @@ class MoodboardHistorySaveApiTest extends TestCase
             ],
         ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $this->postJson('/api/moodboard/history/save', [
+        $this->postJson('/api/v2/moodboard/history/save', [
             'moodboardId' => $moodboardId,
             'state' => [
                 'objects' => [
@@ -99,7 +99,7 @@ class MoodboardHistorySaveApiTest extends TestCase
 
     public function test_history_save_persists_action_type_and_created_by(): void
     {
-        $this->postJson('/api/moodboard/history/save', [
+        $this->postJson('/api/v2/moodboard/history/save', [
             'moodboardId' => 'mb-history-metadata',
             'state' => ['objects' => []],
             'actionType' => 'undo',
@@ -119,7 +119,7 @@ class MoodboardHistorySaveApiTest extends TestCase
     {
         $moodboardId = 'mb-history-lock';
 
-        $this->postJson('/api/moodboard/history/save', [
+        $this->postJson('/api/v2/moodboard/history/save', [
             'moodboardId' => $moodboardId,
             'state' => ['objects' => [['id' => 'v1']]],
         ])->assertOk()->assertJsonPath('historyVersion', 1);
@@ -140,7 +140,7 @@ class MoodboardHistorySaveApiTest extends TestCase
                 [$moodboardId]
             );
 
-            $this->postJson('/api/moodboard/history/save', [
+            $this->postJson('/api/v2/moodboard/history/save', [
                 'moodboardId' => $moodboardId,
                 'state' => ['objects' => [['id' => 'v2']]],
             ])->assertStatus(500)->assertJsonPath('success', false);

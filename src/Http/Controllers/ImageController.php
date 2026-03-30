@@ -312,7 +312,7 @@ class ImageController extends Controller
         } catch (\Exception $e) {
             // Если маршрут не найден, возвращаем базовый URL
             Log::warning("Route 'images.file' not found, using fallback URL for image: {$imageId}");
-            return url("/api/images/{$imageId}/file");
+            return url("/api/v2/images/{$imageId}/download");
         }
     }
 }

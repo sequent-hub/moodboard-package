@@ -11,7 +11,7 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
     public function test_it_handles_ten_sequential_uploads_of_same_metadata_png_successfully(): void
     {
         for ($attempt = 1; $attempt <= 10; $attempt++) {
-            $response = $this->post('/api/images/upload', [
+            $response = $this->post('/api/v2/images/upload', [
                 'image' => $this->metadataPngUpload("metadata-sequential-{$attempt}.png"),
                 'name' => "Metadata sequential {$attempt}",
             ])->assertOk()->assertJsonPath('success', true);
@@ -23,7 +23,7 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
     public function test_it_keeps_image_id_during_ten_upload_save_load_cycles(): void
     {
         for ($cycle = 1; $cycle <= 10; $cycle++) {
-            $uploadResponse = $this->post('/api/images/upload', [
+            $uploadResponse = $this->post('/api/v2/images/upload', [
                 'image' => $this->metadataPngUpload("metadata-cycle-{$cycle}.png"),
                 'name' => "Cycle metadata {$cycle}",
             ])->assertOk()->assertJsonPath('success', true);
@@ -31,29 +31,26 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
             $imageId = $this->assertUploadResponseContainsRequiredFields($uploadResponse);
             $boardId = "board-image-cycle-{$cycle}";
 
-            $this->postJson('/api/moodboard/save', [
-                'boardId' => $boardId,
-                'boardData' => [
-                    'name' => "Cycle Board {$cycle}",
-                    'objects' => [
-                        [
-                            'id' => "image-cycle-obj-{$cycle}",
-                            'type' => 'image',
-                            'imageId' => $imageId,
-                            'position' => ['x' => 10 * $cycle, 'y' => 20 * $cycle],
-                            'width' => 1,
-                            'height' => 1,
-                            'properties' => ['name' => "Cycle {$cycle} image"],
-                        ],
+            $this->saveBoardStateV2($boardId, [
+                'name' => "Cycle Board {$cycle}",
+                'objects' => [
+                    [
+                        'id' => "image-cycle-obj-{$cycle}",
+                        'type' => 'image',
+                        'imageId' => $imageId,
+                        'position' => ['x' => 10 * $cycle, 'y' => 20 * $cycle],
+                        'width' => 1,
+                        'height' => 1,
+                        'properties' => ['name' => "Cycle {$cycle} image"],
                     ],
                 ],
-            ])->assertOk()->assertJsonPath('success', true);
+            ]);
 
-            $loadResponse = $this->getJson("/api/moodboard/{$boardId}")
+            $loadResponse = $this->getJson("/api/v2/moodboard/{$boardId}")
                 ->assertOk()
                 ->assertJsonPath('success', true);
 
-            $savedImageId = $loadResponse->json('data.objects.0.imageId');
+            $savedImageId = $loadResponse->json('data.state.objects.0.imageId');
             $this->assertSame($imageId, $savedImageId, "Image ID changed in cycle {$cycle}.");
         }
     }
@@ -76,12 +73,12 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
             for ($cycle = 1; $cycle <= $cycles; $cycle++) {
                 $boardId = "board-image-diagnostics-{$cycle}-" . substr(md5((string) microtime(true)), 0, 8);
 
-                $regularUploadResponse = $this->post('/api/images/upload', [
+                $regularUploadResponse = $this->post('/api/v2/images/upload', [
                     'image' => UploadedFile::fake()->image("diag-regular-{$cycle}.png", 64, 64),
                     'name' => "Diagnostics regular {$cycle}",
                 ])->assertOk()->assertJsonPath('success', true);
 
-                $metadataUploadResponse = $this->post('/api/images/upload', [
+                $metadataUploadResponse = $this->post('/api/v2/images/upload', [
                     'image' => $this->metadataPngUpload("diag-metadata-{$cycle}.png"),
                     'name' => "Diagnostics metadata {$cycle}",
                 ])->assertOk()->assertJsonPath('success', true);
@@ -89,42 +86,37 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                 $regularImageId = $this->assertUploadResponseContainsRequiredFields($regularUploadResponse);
                 $metadataImageId = $this->assertUploadResponseContainsRequiredFields($metadataUploadResponse);
 
-                $savePayload = [
-                    'boardId' => $boardId,
-                    'boardData' => [
-                        'name' => "Diagnostics board {$cycle}",
-                        'objects' => [
-                            [
-                                'id' => "diag-obj-regular-{$cycle}",
-                                'type' => 'image',
-                                'imageId' => $regularImageId,
-                                'position' => ['x' => 100, 'y' => 100],
-                                'width' => 64,
-                                'height' => 64,
-                                'properties' => ['name' => 'regular'],
-                            ],
-                            [
-                                'id' => "diag-obj-meta-{$cycle}",
-                                'type' => 'image',
-                                'imageId' => $metadataImageId,
-                                'position' => ['x' => 220, 'y' => 100],
-                                'width' => 1,
-                                'height' => 1,
-                                'properties' => ['name' => 'metadata'],
-                            ],
+                $boardData = [
+                    'name' => "Diagnostics board {$cycle}",
+                    'objects' => [
+                        [
+                            'id' => "diag-obj-regular-{$cycle}",
+                            'type' => 'image',
+                            'imageId' => $regularImageId,
+                            'position' => ['x' => 100, 'y' => 100],
+                            'width' => 64,
+                            'height' => 64,
+                            'properties' => ['name' => 'regular'],
+                        ],
+                        [
+                            'id' => "diag-obj-meta-{$cycle}",
+                            'type' => 'image',
+                            'imageId' => $metadataImageId,
+                            'position' => ['x' => 220, 'y' => 100],
+                            'width' => 1,
+                            'height' => 1,
+                            'properties' => ['name' => 'metadata'],
                         ],
                     ],
                 ];
 
-                $saveResponse = $this->postJson('/api/moodboard/save', $savePayload)
+                $saveResponses = $this->saveBoardStateV2($boardId, $boardData);
+
+                $loadResponse = $this->getJson("/api/v2/moodboard/{$boardId}")
                     ->assertOk()
                     ->assertJsonPath('success', true);
 
-                $loadResponse = $this->getJson("/api/moodboard/{$boardId}")
-                    ->assertOk()
-                    ->assertJsonPath('success', true);
-
-                $objects = $loadResponse->json('data.objects') ?? [];
+                $objects = $loadResponse->json('data.state.objects') ?? [];
                 $this->assertCount(2, $objects, "Unexpected object count in cycle {$cycle}.");
 
                 $loadedIds = array_values(array_filter(array_column($objects, 'imageId')));
@@ -132,8 +124,8 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                 $this->assertContains($regularImageId, $loadedIds, "Regular imageId missing in cycle {$cycle}.");
                 $this->assertContains($metadataImageId, $loadedIds, "Metadata imageId missing in cycle {$cycle}.");
 
-                $regularFile = $this->get("/api/images/{$regularImageId}/file")->assertOk();
-                $metadataFile = $this->get("/api/images/{$metadataImageId}/file")->assertOk();
+                $regularFile = $this->get("/api/v2/images/{$regularImageId}/download")->assertOk();
+                $metadataFile = $this->get("/api/v2/images/{$metadataImageId}/download")->assertOk();
 
                 $regularFileStats = $this->assertFileResponseHasNonEmptyBody(
                     $regularFile,
@@ -152,11 +144,12 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                         'metadataImageId' => $metadataImageId,
                     ],
                     'savedPayloadImageIds' => [
-                        $savePayload['boardData']['objects'][0]['imageId'],
-                        $savePayload['boardData']['objects'][1]['imageId'],
+                        $boardData['objects'][0]['imageId'],
+                        $boardData['objects'][1]['imageId'],
                     ],
                     'loadedImageIds' => $loadedIds,
-                    'saveResponse' => $saveResponse->json(),
+                    'saveMetadataResponse' => $saveResponses['metadata']->json(),
+                    'saveHistoryResponse' => $saveResponses['history']->json(),
                     'loadResponse' => $loadResponse->json(),
                     'fileChecks' => [
                         'regularLength' => $regularFileStats['length'],
@@ -186,5 +179,26 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
 
         $summary['finishedAt'] = date(DATE_ATOM);
         $this->writeDiagnosticsJson('summary.json', $summary);
+    }
+
+    private function saveBoardStateV2(string $boardId, array $boardData): array
+    {
+        $metadataResponse = $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => (string) ($boardData['name'] ?? 'Untitled board'),
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $historyResponse = $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
+                'objects' => $boardData['objects'] ?? [],
+            ],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        return [
+            'metadata' => $metadataResponse,
+            'history' => $historyResponse,
+        ];
     }
 }

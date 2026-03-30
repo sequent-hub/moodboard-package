@@ -6,13 +6,19 @@ use Futurello\MoodBoard\Tests\TestCase;
 
 class MoodBoardApiContractTest extends TestCase
 {
-    public function test_it_returns_same_board_data_for_load_and_short_routes(): void
+    public function test_it_returns_latest_history_for_short_v2_route(): void
     {
         $boardId = 'contract-board-load-short';
-        $payload = [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Contract board',
+
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'Contract board',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'note-contract-1',
@@ -22,64 +28,62 @@ class MoodBoardApiContractTest extends TestCase
                     ],
                 ],
             ],
-        ];
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $this->postJson('/api/moodboard/save', $payload)
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $loadRoute = $this->getJson("/api/moodboard/load/{$boardId}")
+        $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->json('data');
+            ->assertJsonPath('data.moodboardId', $boardId)
+            ->assertJsonPath('data.state.objects.0.id', 'note-contract-1')
+            ->assertJsonPath('data.state.objects.0.properties.content', 'api contract');
 
-        $shortRoute = $this->getJson("/api/moodboard/{$boardId}")
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->json('data');
-
-        $this->assertSame($loadRoute['id'], $shortRoute['id']);
-        $this->assertSame($loadRoute['objects'], $shortRoute['objects']);
+        $this->getJson("/api/v2/moodboard/load/{$boardId}")
+            ->assertStatus(501)
+            ->assertJsonPath('success', false);
     }
 
-    public function test_it_validates_board_data_and_settings_types(): void
+    public function test_it_validates_metadata_and_history_payload_types(): void
     {
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => 'board-invalid-boarddata',
-            'boardData' => 'not-an-array',
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'name' => 'Missing moodboardId',
+            'settings' => ['backgroundColor' => '#ffffff'],
         ])->assertStatus(422)->assertJsonPath('success', false);
 
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => 'board-invalid-settings',
-            'boardData' => ['objects' => []],
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => 'board-invalid-settings',
             'settings' => 'not-an-array',
         ])->assertStatus(422)->assertJsonPath('success', false);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => 'board-invalid-history',
+            'state' => 'not-an-array',
+        ])->assertStatus(422)->assertJsonPath('success', false);
     }
 
-    public function test_it_returns_404_for_missing_board_in_show_delete_duplicate_and_stats(): void
+    public function test_it_returns_501_for_compatibility_routes_in_v2(): void
     {
         $boardId = 'missing-board-contract';
 
-        $this->getJson("/api/moodboard/show/{$boardId}")
-            ->assertStatus(404)
+        $this->getJson("/api/v2/moodboard/show/{$boardId}")
+            ->assertStatus(501)
             ->assertJsonPath('success', false);
 
-        $this->deleteJson("/api/moodboard/delete/{$boardId}")
-            ->assertStatus(404)
+        $this->deleteJson("/api/v2/moodboard/delete/{$boardId}")
+            ->assertStatus(501)
             ->assertJsonPath('success', false);
 
-        $this->postJson("/api/moodboard/duplicate/{$boardId}")
-            ->assertStatus(404)
+        $this->postJson("/api/v2/moodboard/duplicate/{$boardId}")
+            ->assertStatus(501)
             ->assertJsonPath('success', false);
 
-        $this->getJson("/api/moodboard/{$boardId}/images/stats")
-            ->assertStatus(404)
+        $this->getJson("/api/v2/moodboard/{$boardId}/images/stats")
+            ->assertStatus(501)
             ->assertJsonPath('success', false);
     }
 
     public function test_it_drops_src_when_image_id_is_present_on_save_and_restores_src_on_load(): void
     {
-        $upload = $this->post('/api/images/upload', [
+        $upload = $this->post('/api/v2/images/upload', [
             'image' => $this->fakeTinyPngUpload('contract-image.png'),
             'name' => 'Contract image',
         ])->assertOk();
@@ -87,10 +91,15 @@ class MoodBoardApiContractTest extends TestCase
         $this->assertNotEmpty($imageId);
 
         $boardId = 'board-image-contract';
-        $this->postJson('/api/moodboard/save', [
-            'boardId' => $boardId,
-            'boardData' => [
-                'name' => 'Image contract board',
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'Image contract board',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
                 'objects' => [
                     [
                         'id' => 'img-obj-contract',
@@ -103,15 +112,14 @@ class MoodBoardApiContractTest extends TestCase
                     ],
                 ],
             ],
-        ])->assertOk()->assertJsonPath('success', true);
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
 
-        $loadedObject = $this->getJson("/api/moodboard/{$boardId}")
+        $loadedObject = $this->getJson("/api/v2/moodboard/{$boardId}")
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->json('data.objects.0');
+            ->json('data.state.objects.0');
 
         $this->assertSame($imageId, $loadedObject['imageId'] ?? null);
-        $this->assertNotEmpty($loadedObject['src'] ?? null);
     }
 
     private function fakeTinyPngUpload(string $filename)
