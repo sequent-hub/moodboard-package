@@ -67,8 +67,29 @@ php artisan migrate
 #### Images (v2)
 
 - `POST /api/v2/images/upload` - Загрузка изображения
-- `GET /api/v2/images/{id}` - Зарезервировано, возвращает `501`
-- `GET /api/v2/images/{id}/download` - Зарезервировано, возвращает `501`
+
+## Source Of Truth (Images)
+
+- Рендер изображения на доске работает только через `state.objects[].src`.
+- SQL-таблица `images` и модель `Image` не участвуют в runtime-потоке.
+- `GET /api/v2/images/{id}` и `GET /api/v2/images/{id}/download` удалены из `v2` контракта.
+- При удалении объекта изображения с доски обновляется только `state`; физический файл в object storage не удаляется.
+- История `moodboard_history` append-only: состояния не обновляются и не удаляются.
+
+### CDN URL Normalization
+
+- После `POST /api/v2/images/upload` URL формируется из object storage.
+- Если задан `MOODBOARD_IMAGE_CDN_BASE_URL`, backend нормализует URL к CDN-формату.
+- При `POST /api/v2/moodboard/history/save` `image.src` дополнительно нормализуется к CDN-URL (если возможно извлечь object path).
+- `data:` и `blob:` источники не переписываются.
+
+### Logging Checklist
+
+1. Проверить upload лог `Image uploaded to object storage` (`path`, `storage_url`, `response_url`).
+2. Проверить `response_url` в ответе `POST /api/v2/images/upload`.
+3. Проверить лог `Moodboard history image src normalization` (`image_objects_total`, `image_objects_with_src`, `image_objects_normalized_to_cdn`).
+4. Проверить `GET /api/v2/moodboard/{moodboard_id}` и наличие `state.objects[].src`.
+5. Проверить на фронте рендер объекта `type: "image"` по `src` после reload.
 
 #### Files (v2)
 

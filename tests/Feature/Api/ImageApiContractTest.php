@@ -14,15 +14,13 @@ class ImageApiContractTest extends TestCase
         Storage::fake('local');
     }
 
-    public function test_it_returns_501_for_show_download_and_destroy_in_v2(): void
+    public function test_it_returns_405_for_removed_show_route_404_for_download_and_501_on_destroy(): void
     {
         $this->getJson('/api/v2/images/not-existing-id')
-            ->assertStatus(501)
-            ->assertJsonPath('success', false);
+            ->assertStatus(405);
 
         $this->get('/api/v2/images/not-existing-id/download')
-            ->assertStatus(501)
-            ->assertJsonPath('success', false);
+            ->assertStatus(404);
 
         $this->deleteJson('/api/v2/images/not-existing-id')
             ->assertStatus(501)

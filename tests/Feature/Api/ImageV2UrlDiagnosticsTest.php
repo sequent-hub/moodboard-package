@@ -8,10 +8,26 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageV2UrlDiagnosticsTest extends TestCase
 {
+    private ?string $previousCdnBaseUrl = null;
+
     protected function setUp(): void
     {
         parent::setUp();
         Storage::fake('local');
+        $this->previousCdnBaseUrl = getenv('MOODBOARD_IMAGE_CDN_BASE_URL') !== false
+            ? (string) getenv('MOODBOARD_IMAGE_CDN_BASE_URL')
+            : null;
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->previousCdnBaseUrl === null) {
+            putenv('MOODBOARD_IMAGE_CDN_BASE_URL');
+        } else {
+            putenv('MOODBOARD_IMAGE_CDN_BASE_URL=' . $this->previousCdnBaseUrl);
+        }
+
+        parent::tearDown();
     }
 
     public function test_v2_upload_returns_v2_download_url_in_payload(): void
@@ -36,5 +52,18 @@ class ImageV2UrlDiagnosticsTest extends TestCase
 
         $url = (string) $uploadResponse->json('data.url');
         $this->assertNotEmpty($url, 'Could not parse data.url.');
+    }
+
+    public function test_v2_upload_returns_cdn_url_when_cdn_base_is_configured(): void
+    {
+        putenv('MOODBOARD_IMAGE_CDN_BASE_URL=https://cdn.example.com');
+
+        $uploadResponse = $this->post('/api/v2/images/upload', [
+            'image' => UploadedFile::fake()->image('v2-cdn.png', 40, 40),
+            'name' => 'V2 CDN Image',
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $url = (string) $uploadResponse->json('data.url');
+        $this->assertStringContainsString('https://cdn.example.com/images/', $url);
     }
 }

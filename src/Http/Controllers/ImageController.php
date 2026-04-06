@@ -64,8 +64,13 @@ class ImageController extends Controller
             $imageInfo = getimagesize($file->getPathname());
             $width = $request->input('width', $imageInfo[0] ?? 100);
             $height = $request->input('height', $imageInfo[1] ?? 100);
-            $url = Storage::disk('s3')->url($path);
-            Log::info('Image uploaded to object storage', ['path' => $path, 'url' => $url]);
+            $storageUrl = Storage::disk('s3')->url($path);
+            $url = $this->buildImageUrl($storageUrl, $path);
+            Log::info('Image uploaded to object storage', [
+                'path' => $path,
+                'storage_url' => $storageUrl,
+                'response_url' => $url,
+            ]);
 
             $response = response()->json([
                 'success' => true,
@@ -145,6 +150,20 @@ class ImageController extends Controller
             'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
         ]);
+    }
+
+    /**
+     * Build public URL for image response.
+     * If CDN base URL is configured, returns CDN URL with object path.
+     */
+    private function buildImageUrl(string $storageUrl, string $objectPath): string
+    {
+        $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
+        if ($cdnBaseUrl === '') {
+            return $storageUrl;
+        }
+
+        return rtrim($cdnBaseUrl, '/') . '/' . ltrim($objectPath, '/');
     }
 
 }

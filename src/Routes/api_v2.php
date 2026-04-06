@@ -32,8 +32,6 @@ Route::prefix('api/v2')->group(function () use ($v2NotImplemented) {
 
     Route::prefix('images')->group(function () use ($v2NotImplemented) {
         Route::post('/upload', [ImageController::class, 'upload']);
-        Route::get('/{id}', [ImageController::class, 'show']);
-        Route::get('/{id}/download', [ImageController::class, 'file'])->name('images.file');
 
         // TODO(v2): reserve legacy-compatible routes until dedicated handlers are implemented.
         Route::get('/', $v2NotImplemented); // legacy: GET /api/images

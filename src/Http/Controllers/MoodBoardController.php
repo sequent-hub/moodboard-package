@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
 
 class MoodBoardController extends Controller
@@ -498,6 +499,10 @@ class MoodBoardController extends Controller
             return $state;
         }
 
+        $imageObjectsTotal = 0;
+        $imageObjectsWithSrc = 0;
+        $imageObjectsNormalizedToCdn = 0;
+
         foreach ($state['objects'] as &$object) {
             if (!is_array($object)) {
                 continue;
@@ -506,6 +511,8 @@ class MoodBoardController extends Controller
             if (($object['type'] ?? null) !== 'image') {
                 continue;
             }
+
+            $imageObjectsTotal++;
 
             $allowedKeys = [
                 'id',
@@ -521,10 +528,65 @@ class MoodBoardController extends Controller
 
             $object = array_intersect_key($object, array_flip($allowedKeys));
             unset($object['base64']);
+
+            if (isset($object['src']) && is_string($object['src']) && $object['src'] !== '') {
+                $imageObjectsWithSrc++;
+                $normalizedSrc = $this->normalizeImageSrcToCdn($object['src']);
+                if ($normalizedSrc !== $object['src']) {
+                    $imageObjectsNormalizedToCdn++;
+                }
+                $object['src'] = $normalizedSrc;
+            }
         }
 
         unset($object);
 
+        Log::info('Moodboard history image src normalization', [
+            'image_objects_total' => $imageObjectsTotal,
+            'image_objects_with_src' => $imageObjectsWithSrc,
+            'image_objects_normalized_to_cdn' => $imageObjectsNormalizedToCdn,
+        ]);
+
         return $state;
+    }
+
+    private function normalizeImageSrcToCdn(string $src): string
+    {
+        $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
+        if ($cdnBaseUrl === '') {
+            return $src;
+        }
+
+        // Keep in-memory image sources untouched.
+        if (str_starts_with($src, 'data:') || str_starts_with($src, 'blob:')) {
+            return $src;
+        }
+
+        $objectPath = $this->extractObjectPathFromSrc($src);
+        if ($objectPath === null) {
+            return $src;
+        }
+
+        return rtrim($cdnBaseUrl, '/') . '/' . ltrim($objectPath, '/');
+    }
+
+    private function extractObjectPathFromSrc(string $src): ?string
+    {
+        $directPath = ltrim($src, '/');
+        if (str_starts_with($directPath, 'images/')) {
+            return $directPath;
+        }
+
+        $path = parse_url($src, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return null;
+        }
+
+        $imagesPrefixPosition = strpos($path, '/images/');
+        if ($imagesPrefixPosition === false) {
+            return null;
+        }
+
+        return ltrim(substr($path, $imagesPrefixPosition), '/');
     }
 }

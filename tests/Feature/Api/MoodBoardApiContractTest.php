@@ -6,6 +6,27 @@ use Futurello\MoodBoard\Tests\TestCase;
 
 class MoodBoardApiContractTest extends TestCase
 {
+    private ?string $previousCdnBaseUrl = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousCdnBaseUrl = getenv('MOODBOARD_IMAGE_CDN_BASE_URL') !== false
+            ? (string) getenv('MOODBOARD_IMAGE_CDN_BASE_URL')
+            : null;
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->previousCdnBaseUrl === null) {
+            putenv('MOODBOARD_IMAGE_CDN_BASE_URL');
+        } else {
+            putenv('MOODBOARD_IMAGE_CDN_BASE_URL=' . $this->previousCdnBaseUrl);
+        }
+
+        parent::tearDown();
+    }
+
     public function test_it_returns_latest_history_for_short_v2_route(): void
     {
         $boardId = 'contract-board-load-short';
@@ -119,6 +140,44 @@ class MoodBoardApiContractTest extends TestCase
             ->json('data.state.objects.0');
 
         $this->assertSame($src, $loadedObject['src'] ?? null);
+    }
+
+    public function test_it_normalizes_image_src_to_cdn_during_history_save_when_configured(): void
+    {
+        putenv('MOODBOARD_IMAGE_CDN_BASE_URL=https://cdn.example.com');
+
+        $boardId = 'board-image-cdn-normalization';
+        $this->postJson('/api/v2/moodboard/metadata/save', [
+            'moodboardId' => $boardId,
+            'name' => 'CDN normalization board',
+            'settings' => ['backgroundColor' => '#ffffff'],
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->postJson('/api/v2/moodboard/history/save', [
+            'moodboardId' => $boardId,
+            'state' => [
+                'objects' => [
+                    [
+                        'id' => 'img-obj-cdn',
+                        'type' => 'image',
+                        'src' => 'http://localhost/storage/s3/images/2026/04/test.png',
+                        'position' => ['x' => 10, 'y' => 20],
+                        'width' => 100,
+                        'height' => 80,
+                    ],
+                ],
+            ],
+        ])->assertOk()->assertJsonPath('historyVersion', 1);
+
+        $loadedObject = $this->getJson("/api/v2/moodboard/{$boardId}")
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->json('data.state.objects.0');
+
+        $this->assertSame(
+            'https://cdn.example.com/images/2026/04/test.png',
+            $loadedObject['src'] ?? null
+        );
     }
 
     private function fakeTinyPngUpload(string $filename)

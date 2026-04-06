@@ -43,10 +43,10 @@
 - Стало: `POST /api/v2/images/upload`
 
 - Было: `GET /api/images/{id}`
-- Стало: `GET /api/v2/images/{id}` (заглушка `501`)
+- Стало: удалено из `v2` контракта
 
 - Было: `GET /api/images/{id}/file`
-- Стало: `GET /api/v2/images/{id}/download` (заглушка `501`)
+- Стало: удалено из `v2` контракта
 
 - Было: `GET /api/images/`
 - Стало: `GET /api/v2/images/` (заглушка `501`)

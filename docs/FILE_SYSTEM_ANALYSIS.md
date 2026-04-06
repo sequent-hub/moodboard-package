@@ -5,7 +5,7 @@
 > Ниже в документе встречаются legacy-пути (`/api/...`) для исторического контекста.
 > Для актуальной интеграции используйте `v2`:
 > - Было `POST /api/images/upload` -> Стало `POST /api/v2/images/upload`
-> - Было `GET /api/images/{id}/file` -> Стало `GET /api/v2/images/{id}/download` (`501` в v2)
+> - Было `GET /api/images/{id}/file` -> удалено из `v2` контракта
 > - Было `POST /api/moodboard/save` -> Стало `POST /api/v2/moodboard/metadata/save` + `POST /api/v2/moodboard/history/save`
 > - Было `GET /api/moodboard/load/{id}` -> Стало `GET /api/v2/moodboard/{moodboard_id}/{version?}`
 
