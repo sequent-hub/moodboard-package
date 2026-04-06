@@ -5,7 +5,7 @@
 > Ниже в документе встречаются legacy-пути (`/api/...`) для исторического контекста.
 > Для актуальной интеграции используйте `v2`:
 > - Было `POST /api/images/upload` -> Стало `POST /api/v2/images/upload`
-> - Было `GET /api/images/{id}/file` -> Стало `GET /api/v2/images/{id}/download`
+> - Было `GET /api/images/{id}/file` -> Стало `GET /api/v2/images/{id}/download` (`501` в v2)
 > - Было `POST /api/moodboard/save` -> Стало `POST /api/v2/moodboard/metadata/save` + `POST /api/v2/moodboard/history/save`
 > - Было `GET /api/moodboard/load/{id}` -> Стало `GET /api/v2/moodboard/{moodboard_id}/{version?}`
 
@@ -53,9 +53,9 @@ images:
 ```
 
 ### **Шаг 3: Интеграция с MoodBoard**
-1. **Сохранение на доске** - в `boardData.objects` сохраняется только `imageId`
-2. **Очистка данных** - метод `cleanImageData()` удаляет base64 и src
-3. **Восстановление URL** - метод `restoreImageUrls()` восстанавливает ссылки при загрузке
+1. **Сохранение на доске** - в `boardData.objects` сохраняется `src`
+2. **Очистка данных** - метод `cleanImageData()` удаляет base64
+3. **Загрузка URL** - `src` возвращается из сохраненного состояния без восстановления
 
 ## 3. МЕХАНИЗМ ПОЛУЧЕНИЯ ФАЙЛОВ
 
@@ -72,12 +72,12 @@ GET /api/images/{id}/file
 ### **Генерация URL:**
 ```php
 // В контроллере
-private function getImageUrl(string $imageId): string
+private function getImageUrl(string $id): string
 {
     try {
-        return route('images.file', $imageId);
+        return route('images.file', $id);
     } catch (\Exception $e) {
-        return url("/api/images/{$imageId}/file");
+        return url("/api/images/{$id}/file");
     }
 }
 ```
@@ -181,9 +181,9 @@ Log::info('File save result', [
 
 ### **Шаг 3: Проверка при загрузке**
 ```php
-// В restoreImageUrls()
+// В обработке загрузки состояния
 Log::info('Image restore', [
-    'imageId' => $object['imageId'],
+    'src' => $object['src'] ?? null,
     'image_found' => $image ? 'yes' : 'no',
     'file_exists' => $image ? Storage::exists($image->path) : 'no image',
     'generated_url' => $image ? $this->getImageUrl($image->id) : 'no url'
@@ -226,7 +226,7 @@ Log::info('Image restore', [
 
 1. **Двухуровневая архитектура**: Images (для изображений на досках) и Files (общие файлы)
 2. **Механизм сохранения**: файл → storage/app/images/YYYY/MM/ → запись в БД с относительным путем
-3. **Механизм восстановления**: поиск по imageId → проверка Storage::exists() → генерация URL
+3. **Механизм отображения**: чтение src из state → рендер изображения
 4. **Основные проблемы**: конфликт дисков, неправильные пути, отсутствие маршрутов, несовместимость моделей
 5. **Диагностика**: добавить логирование в ImageController::upload() и MoodBoardController::restoreImageUrls()
 

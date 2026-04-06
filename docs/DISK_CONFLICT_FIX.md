@@ -104,16 +104,15 @@ ls -la storage/app/public/files/
 curl http://your-domain/api/v2/files/{id}/download
 ```
 
-### Проверка изображений (не изменилось):
+### Проверка изображений (v2):
 ```bash
 # Проверить существование изображений на диске local
 ls -la storage/app/images/
 
-# Проверить API изображений
-# Было:
-# curl http://your-domain/api/images/{id}/file
-# Стало:
-curl http://your-domain/api/v2/images/{id}/download
+# Проверить upload изображений
+curl -X POST http://your-domain/api/v2/images/upload \
+  -F "image=@test.png" \
+  -F "name=Test image"
 ```
 
 ## Обновление в проектах

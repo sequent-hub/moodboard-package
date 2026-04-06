@@ -14,30 +14,26 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
             'name' => 'Regular PNG',
         ])->assertOk()->assertJsonPath('success', true);
 
-        $regularImageId = $this->assertUploadResponseContainsRequiredFields($regularUpload);
+        $regularUrl = $this->assertUploadResponseContainsRequiredFields($regularUpload);
 
         $metadataUpload = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('metadata.png'),
             'name' => 'Metadata PNG',
         ])->assertOk()->assertJsonPath('success', true);
 
-        $metadataImageId = $this->assertUploadResponseContainsRequiredFields($metadataUpload);
-
-        $regularFileResponse = $this->get("/api/v2/images/{$regularImageId}/download")->assertOk();
-        $this->assertFileResponseHasNonEmptyBody($regularFileResponse, 'Regular PNG file body is empty.');
-
-        $metadataFileResponse = $this->get("/api/v2/images/{$metadataImageId}/download")->assertOk();
-        $this->assertFileResponseHasNonEmptyBody($metadataFileResponse, 'Metadata PNG file body is empty.');
+        $metadataUrl = $this->assertUploadResponseContainsRequiredFields($metadataUpload);
+        $this->assertNotEmpty($regularUrl);
+        $this->assertNotEmpty($metadataUrl);
     }
 
-    public function test_it_saves_and_loads_image_object_without_src_and_keeps_image_id(): void
+    public function test_it_saves_and_loads_image_object_with_src(): void
     {
-        $imageId = $this->post('/api/v2/images/upload', [
+        $src = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('single-board-metadata.png'),
             'name' => 'Single board metadata PNG',
-        ])->assertOk()->json('data.imageId');
+        ])->assertOk()->json('data.url');
 
-        $this->assertNotEmpty($imageId);
+        $this->assertNotEmpty($src);
 
         $boardId = 'board-image-single';
         $this->postJson('/api/v2/moodboard/metadata/save', [
@@ -53,7 +49,7 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
                     [
                         'id' => 'image-obj-1',
                         'type' => 'image',
-                        'imageId' => $imageId,
+                        'src' => $src,
                         'position' => ['x' => 10, 'y' => 20],
                         'width' => 320,
                         'height' => 240,
@@ -70,23 +66,23 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
         $objects = $loadResponse->json('data.state.objects');
         $this->assertCount(1, $objects);
         $this->assertSame('image', $objects[0]['type']);
-        $this->assertSame($imageId, $objects[0]['imageId'] ?? null);
+        $this->assertSame($src, $objects[0]['src'] ?? null);
     }
 
     public function test_it_persists_multiple_images_in_one_board_including_metadata_png(): void
     {
-        $regularImageId = $this->post('/api/v2/images/upload', [
+        $regularSrc = $this->post('/api/v2/images/upload', [
             'image' => UploadedFile::fake()->image('multi-regular.png', 100, 60),
             'name' => 'Multi Regular',
-        ])->assertOk()->json('data.imageId');
+        ])->assertOk()->json('data.url');
 
-        $metadataImageId = $this->post('/api/v2/images/upload', [
+        $metadataSrc = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('multi-metadata.png'),
             'name' => 'Multi Metadata',
-        ])->assertOk()->json('data.imageId');
+        ])->assertOk()->json('data.url');
 
-        $this->assertNotEmpty($regularImageId);
-        $this->assertNotEmpty($metadataImageId);
+        $this->assertNotEmpty($regularSrc);
+        $this->assertNotEmpty($metadataSrc);
 
         $boardId = 'board-image-multi';
         $this->postJson('/api/v2/moodboard/metadata/save', [
@@ -102,7 +98,7 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
                     [
                         'id' => 'img-obj-1',
                         'type' => 'image',
-                        'imageId' => $regularImageId,
+                        'src' => $regularSrc,
                         'position' => ['x' => 0, 'y' => 0],
                         'width' => 100,
                         'height' => 60,
@@ -111,7 +107,7 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
                     [
                         'id' => 'img-obj-2',
                         'type' => 'image',
-                        'imageId' => $metadataImageId,
+                        'src' => $metadataSrc,
                         'position' => ['x' => 120, 'y' => 0],
                         'width' => 1,
                         'height' => 1,
@@ -128,9 +124,9 @@ class ImageUploadPersistenceTest extends AbstractAutosaveTestCase
         $objects = $loadResponse->json('data.state.objects');
         $this->assertCount(2, $objects);
 
-        $ids = array_column($objects, 'imageId');
-        $this->assertContains($regularImageId, $ids);
-        $this->assertContains($metadataImageId, $ids);
+        $urls = array_column($objects, 'src');
+        $this->assertContains($regularSrc, $urls);
+        $this->assertContains($metadataSrc, $urls);
     }
 
     public function test_it_returns_validation_errors_for_upload_issues(): void

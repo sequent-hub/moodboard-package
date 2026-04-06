@@ -90,7 +90,7 @@ class MoodBoardFrontendPayloadRegressionTest extends TestCase
                         'width' => 300,
                         'height' => 200,
                         'properties' => ['name' => 'photo.jpg', 'width' => 300, 'height' => 200],
-                        'imageId' => 'img_uuid_abc',
+                        'src' => 'https://cdn.example.com/images/photo.jpg',
                         'transform' => ['pivotCompensated' => false],
                         'created' => '2026-03-02T15:02:00.000Z',
                     ],

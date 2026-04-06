@@ -81,14 +81,14 @@ class MoodBoardApiContractTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
-    public function test_it_drops_src_when_image_id_is_present_on_save_and_restores_src_on_load(): void
+    public function test_it_keeps_src_for_image_object_on_save_and_load(): void
     {
         $upload = $this->post('/api/v2/images/upload', [
             'image' => $this->fakeTinyPngUpload('contract-image.png'),
             'name' => 'Contract image',
         ])->assertOk();
-        $imageId = $upload->json('data.imageId');
-        $this->assertNotEmpty($imageId);
+        $src = $upload->json('data.url');
+        $this->assertNotEmpty($src);
 
         $boardId = 'board-image-contract';
         $this->postJson('/api/v2/moodboard/metadata/save', [
@@ -104,8 +104,7 @@ class MoodBoardApiContractTest extends TestCase
                     [
                         'id' => 'img-obj-contract',
                         'type' => 'image',
-                        'imageId' => $imageId,
-                        'src' => 'data:image/png;base64,AAA',
+                        'src' => $src,
                         'position' => ['x' => 1, 'y' => 2],
                         'width' => 1,
                         'height' => 1,
@@ -119,7 +118,7 @@ class MoodBoardApiContractTest extends TestCase
             ->assertJsonPath('success', true)
             ->json('data.state.objects.0');
 
-        $this->assertSame($imageId, $loadedObject['imageId'] ?? null);
+        $this->assertSame($src, $loadedObject['src'] ?? null);
     }
 
     private function fakeTinyPngUpload(string $filename)

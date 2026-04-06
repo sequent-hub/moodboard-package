@@ -80,7 +80,7 @@
 ## Объекты (objects)
 
 **Обязательные поля:** `id`, `type`, `position`  
-**Опциональные:** `width`, `height`, `properties`, `transform`, `created`, `imageId`, `fileId`
+**Опциональные:** `width`, `height`, `properties`, `transform`, `created`, `src`, `fileId`
 
 **transform** — критично:
 - Бэкенд **не должен** удалять или фильтровать `transform`.

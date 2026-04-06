@@ -7,7 +7,7 @@ use Throwable;
 
 class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
 {
-    public function test_it_preserves_image_id_in_screenshot_blob_to_uploaded_png_lifecycle(): void
+    public function test_it_preserves_src_in_screenshot_blob_to_uploaded_png_lifecycle(): void
     {
         $boardId = 'board-screenshot-lifecycle-' . substr(md5((string) microtime(true)), 0, 8);
         $objectId = 'screenshot-obj-1';
@@ -39,14 +39,14 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
         $firstObject = $afterFirstSave->json('data.state.objects.0');
 
         $this->assertSame($objectId, $firstObject['id'] ?? null);
-        $this->assertArrayNotHasKey('imageId', $firstObject, 'imageId should be absent before upload.');
         $this->assertNotEmpty($firstObject['src'] ?? null, 'src should exist before image upload.');
 
         $uploadResponse = $this->post('/api/v2/images/upload', [
             'image' => $this->metadataPngUpload('screenshot-lifecycle.png'),
             'name' => 'Screenshot lifecycle PNG',
         ])->assertOk()->assertJsonPath('success', true);
-        $uploadedImageId = $this->assertUploadResponseContainsRequiredFields($uploadResponse);
+        $uploadedSrc = (string) $uploadResponse->json('data.url');
+        $this->assertNotEmpty($uploadedSrc);
 
         $secondSavePayload = [
             'boardId' => $boardId,
@@ -56,7 +56,7 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
                     [
                         'id' => $objectId,
                         'type' => 'image',
-                        'imageId' => $uploadedImageId,
+                        'src' => $uploadedSrc,
                         'position' => ['x' => 150, 'y' => 100],
                         'width' => 1,
                         'height' => 1,
@@ -74,7 +74,7 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
         $secondObject = $afterSecondSave->json('data.state.objects.0');
 
         $this->assertSame($objectId, $secondObject['id'] ?? null);
-        $this->assertSame($uploadedImageId, $secondObject['imageId'] ?? null);
+        $this->assertSame($uploadedSrc, $secondObject['src'] ?? null);
 
         $this->saveBoardStateV2($boardId, [
             'name' => 'Screenshot lifecycle board',
@@ -85,7 +85,7 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
             ->assertOk()
             ->assertJsonPath('success', true);
         $thirdObject = $afterThirdSave->json('data.state.objects.0');
-        $this->assertSame($uploadedImageId, $thirdObject['imageId'] ?? null);
+        $this->assertSame($uploadedSrc, $thirdObject['src'] ?? null);
     }
 
     public function test_it_collects_diagnostics_for_repeated_screenshot_blob_lifecycle_cycles(): void
@@ -133,14 +133,14 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
                     ->assertJsonPath('success', true);
 
                 $objectBeforeUpload = $loadBeforeUpload->json('data.state.objects.0');
-                $this->assertArrayNotHasKey('imageId', $objectBeforeUpload, "Unexpected imageId before upload, cycle {$cycle}.");
                 $this->assertNotEmpty($objectBeforeUpload['src'] ?? null, "Missing src before upload, cycle {$cycle}.");
 
                 $uploadResponse = $this->post('/api/v2/images/upload', [
                     'image' => $this->metadataPngUpload("screenshot-cycle-{$cycle}.png"),
                     'name' => "Screenshot cycle {$cycle}",
                 ])->assertOk()->assertJsonPath('success', true);
-                $uploadedImageId = $this->assertUploadResponseContainsRequiredFields($uploadResponse);
+                $uploadedSrc = (string) $uploadResponse->json('data.url');
+                $this->assertNotEmpty($uploadedSrc);
 
                 $afterUploadSavePayload = [
                     'boardId' => $boardId,
@@ -150,7 +150,7 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
                             [
                                 'id' => $objectId,
                                 'type' => 'image',
-                                'imageId' => $uploadedImageId,
+                                'src' => $uploadedSrc,
                                 'position' => ['x' => 20 * $cycle, 'y' => 15 * $cycle],
                                 'width' => 1,
                                 'height' => 1,
@@ -167,7 +167,7 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
                     ->assertJsonPath('success', true);
 
                 $objectAfterUpload = $loadAfterUpload->json('data.state.objects.0');
-                $this->assertSame($uploadedImageId, $objectAfterUpload['imageId'] ?? null, "imageId mismatch in cycle {$cycle}.");
+                $this->assertSame($uploadedSrc, $objectAfterUpload['src'] ?? null, "src mismatch in cycle {$cycle}.");
 
                 $this->saveBoardStateV2($boardId, [
                     'name' => "Screenshot cycle board {$cycle}",
@@ -180,16 +180,16 @@ class ScreenshotAutosaveLifecycleTest extends AbstractAutosaveTestCase
 
                 $objectAfterResave = $loadAfterResave->json('data.state.objects.0');
                 $this->assertSame(
-                    $uploadedImageId,
-                    $objectAfterResave['imageId'] ?? null,
-                    "imageId lost after re-save in cycle {$cycle}."
+                    $uploadedSrc,
+                    $objectAfterResave['src'] ?? null,
+                    "src lost after re-save in cycle {$cycle}."
                 );
 
                 $this->writeDiagnosticsJson("screenshot-cycle-{$cycle}.json", [
                     'cycle' => $cycle,
                     'boardId' => $boardId,
                     'objectId' => $objectId,
-                    'imageId' => $uploadedImageId,
+                    'src' => $uploadedSrc,
                     'beforeUpload' => $objectBeforeUpload,
                     'afterUpload' => $objectAfterUpload,
                     'afterResave' => $objectAfterResave,

@@ -5,11 +5,11 @@
 ## Проблемы, которые были исправлены
 
 ### 1. ImageController::upload - Неправильный JSON ответ
-**Проблема**: API возвращал `id` вместо `imageId`, что вызывало проблемы на фронтенде.
+**Проблема**: API ответ для изображения был нестабильным для фронтенд-контракта.
 
 **Исправление**: 
-- Добавлено поле `imageId` в ответ API
-- Оставлено поле `id` для обратной совместимости
+- Контракт унифицирован на `id` и `url`
+- Исключены лишние дублирующие поля
 - Улучшена обработка ошибок
 
 ### 2. Отсутствие CORS поддержки
@@ -86,7 +86,6 @@ curl -X POST http://your-domain/api/v2/images/upload \
 {
   "success": true,
   "data": {
-    "imageId": "uuid-here",
     "id": "uuid-here",
     "url": "http://your-domain/api/v2/images/uuid-here/download",
     "name": "Test Image",
@@ -124,7 +123,7 @@ Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Acc
 
 ## Рекомендации
 
-1. **Обновите фронтенд** для использования поля `imageId` вместо `id`
+1. **Обновите фронтенд** для использования `src` в объектах изображения
 2. **Проверьте CORS настройки** в вашем основном приложении
 3. **Обновите документацию API** с новыми полями ответов
 4. **Протестируйте загрузку** с различными типами изображений
@@ -140,5 +139,5 @@ tail -f storage/logs/laravel.log | grep -E "(Image|MoodBoard)"
 Ключевые события:
 - `Image uploaded: {id} ({name})` - успешная загрузка
 - `Reusing existing image: {id}` - использование существующего изображения
-- `Image not found for imageId: {id}` - отсутствующее изображение
+- `Image file error: ...` - отсутствующее изображение или ошибка чтения
 - `Route 'images.file' not found` - проблемы с маршрутами

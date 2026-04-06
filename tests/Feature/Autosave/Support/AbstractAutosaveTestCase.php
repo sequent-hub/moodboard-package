@@ -26,13 +26,11 @@ abstract class AbstractAutosaveTestCase extends TestCase
 
     protected function assertUploadResponseContainsRequiredFields($response): string
     {
-        $imageId = $response->json('data.imageId');
         $url = $response->json('data.url');
         $width = $response->json('data.width');
         $height = $response->json('data.height');
         $size = $response->json('data.size');
 
-        $this->assertNotEmpty($imageId, 'Missing imageId in upload response.');
         $this->assertNotEmpty($url, 'Missing url in upload response.');
         $this->assertIsInt($width, 'Width must be integer.');
         $this->assertGreaterThan(0, $width, 'Width must be > 0.');
@@ -41,7 +39,7 @@ abstract class AbstractAutosaveTestCase extends TestCase
         $this->assertIsInt($size, 'Size must be integer.');
         $this->assertGreaterThan(0, $size, 'Size must be > 0.');
 
-        return $imageId;
+        return (string) $url;
     }
 
     protected function metadataPngUpload(string $filename): UploadedFile

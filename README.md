@@ -52,6 +52,9 @@ php artisan migrate
 ## API Endpoints
 
 > Переезд на v2: см. карту `Было/Стало` в `docs/API_V2_WAS_BECAME.md`.
+>
+> Важно: модель `Image` удалена из пакета, а таблица `images` не используется в runtime.
+> Хранение изображений выполняется во внешнем object storage (S3/CDN), в состоянии доски хранится `src`.
 
 ### Актуальные v2 endpoints
 
@@ -64,8 +67,8 @@ php artisan migrate
 #### Images (v2)
 
 - `POST /api/v2/images/upload` - Загрузка изображения
-- `GET /api/v2/images/{imageId}` - Информация об изображении
-- `GET /api/v2/images/{imageId}/download` - Получение файла изображения
+- `GET /api/v2/images/{id}` - Зарезервировано, возвращает `501`
+- `GET /api/v2/images/{id}/download` - Зарезервировано, возвращает `501`
 
 #### Files (v2)
 

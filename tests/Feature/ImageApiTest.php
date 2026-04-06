@@ -23,37 +23,26 @@ class ImageApiTest extends TestCase
             'name' => 'Demo Image',
         ])->assertOk()->assertJsonPath('success', true);
 
-        $imageId = $uploadResponse->json('data.imageId');
-        $this->assertNotEmpty($imageId);
-
-        $this->getJson("/api/v2/images/{$imageId}")
-            ->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.id', $imageId)
-            ->assertJsonPath('data.name', 'Demo Image');
-
-        $this->get("/api/v2/images/{$imageId}/download")
-            ->assertOk();
+        $url = $uploadResponse->json('data.url');
+        $this->assertNotEmpty($url);
+        $uploadResponse->assertJsonPath('data.name', 'Demo Image');
     }
 
     public function test_it_returns_not_implemented_for_bulk_delete_on_v2(): void
     {
-        $first = $this->post('/api/v2/images/upload', [
+        $this->post('/api/v2/images/upload', [
             'image' => UploadedFile::fake()->image('one.png', 10, 10),
             'name' => 'One',
-        ])->json('data.imageId');
+        ])->assertOk();
 
-        $second = $this->post('/api/v2/images/upload', [
+        $this->post('/api/v2/images/upload', [
             'image' => UploadedFile::fake()->image('two.png', 10, 10),
             'name' => 'Two',
-        ])->json('data.imageId');
+        ])->assertOk();
 
-        $this->postJson('/api/v2/images/bulk-delete', ['ids' => [$first, $second]])
+        $this->postJson('/api/v2/images/bulk-delete', ['ids' => ['any', 'values']])
             ->assertStatus(501)
             ->assertJsonPath('success', false);
-
-        $this->assertDatabaseHas('images', ['id' => $first]);
-        $this->assertDatabaseHas('images', ['id' => $second]);
     }
 
     public function test_it_validates_upload_request(): void

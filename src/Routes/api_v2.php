@@ -32,14 +32,14 @@ Route::prefix('api/v2')->group(function () use ($v2NotImplemented) {
 
     Route::prefix('images')->group(function () use ($v2NotImplemented) {
         Route::post('/upload', [ImageController::class, 'upload']);
-        Route::get('/{imageId}', [ImageController::class, 'show']);
-        Route::get('/{imageId}/download', [ImageController::class, 'file'])->name('images.file');
+        Route::get('/{id}', [ImageController::class, 'show']);
+        Route::get('/{id}/download', [ImageController::class, 'file'])->name('images.file');
 
         // TODO(v2): reserve legacy-compatible routes until dedicated handlers are implemented.
         Route::get('/', $v2NotImplemented); // legacy: GET /api/images
         Route::post('/bulk-delete', $v2NotImplemented); // legacy: POST /api/images/bulk-delete
-        Route::delete('/{imageId}', $v2NotImplemented); // legacy: DELETE /api/images/{id}
-        Route::get('/{imageId}/file', $v2NotImplemented); // legacy alias: GET /api/images/{id}/file
+        Route::delete('/{id}', $v2NotImplemented); // legacy: DELETE /api/images/{id}
+        Route::get('/{id}/file', $v2NotImplemented); // legacy alias: GET /api/images/{id}/file
     });
 
     Route::prefix('files')->group(function () use ($v2NotImplemented) {

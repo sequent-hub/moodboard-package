@@ -4,7 +4,6 @@ namespace Futurello\MoodBoard\Http\Controllers;
 
 use Futurello\MoodBoard\Models\MoodBoard;
 use Futurello\MoodBoard\Models\MoodboardHistory;
-use Futurello\MoodBoard\Models\Image;
 use Futurello\MoodBoard\Services\MoodboardHistoryService;
 use Futurello\MoodBoard\Services\MoodboardMetaService;
 use Illuminate\Http\Request;
@@ -161,7 +160,7 @@ class MoodBoardController extends Controller
                 $settings = is_array($settingsFromBoardData) ? $settingsFromBoardData : null;
             }
 
-            // Очищаем данные изображений от base64, оставляем только imageId
+            // Очищаем данные изображений от base64, сохраняем URL изображения в src
             $cleanedBoardData = $this->cleanImageData($boardData);
             
             // Создаем или обновляем доску
@@ -208,7 +207,7 @@ class MoodBoardController extends Controller
 
         try {
             $moodboardId = (string) $request->input('moodboardId');
-            $state = $request->input('state', []);
+            $state = $this->normalizeStateForStorage($request->input('state', []));
             $actionType = (string) $request->input('actionType', 'command_execute');
             $createdBy = $request->input('createdBy');
 
@@ -451,18 +450,28 @@ class MoodBoardController extends Controller
     }
 
     /**
-     * Очистка данных изображений от base64
+     * Очистка данных изображений от base64 с сохранением src.
      */
     private function cleanImageData(array $boardData): array
     {
         if (isset($boardData['objects'])) {
             foreach ($boardData['objects'] as &$object) {
                 if (isset($object['type']) && $object['type'] === 'image') {
-                    // Оставляем только imageId, убираем base64
-                    if (isset($object['imageId'])) {
-                        unset($object['src']);
-                        unset($object['base64']);
-                    }
+                    // Keep only the canonical image object contract fields.
+                    $allowedKeys = [
+                        'id',
+                        'type',
+                        'src',
+                        'position',
+                        'width',
+                        'height',
+                        'properties',
+                        'transform',
+                        'created',
+                    ];
+
+                    $object = array_intersect_key($object, array_flip($allowedKeys));
+                    unset($object['base64']);
                 }
             }
         }
@@ -471,45 +480,51 @@ class MoodBoardController extends Controller
     }
 
     /**
-     * Восстановление URL изображений
+     * Для v2 URL изображений должны уже храниться в src внутри state.
+     * Возвращаем данные без дополнительной обработки.
      */
     private function restoreImageUrls(array $boardData): array
     {
-        if (isset($boardData['objects'])) {
-            foreach ($boardData['objects'] as &$object) {
-                if (isset($object['type']) && $object['type'] === 'image') {
-                    if (isset($object['imageId'])) {
-                        $image = Image::find($object['imageId']);
-                        if ($image) {
-                            // Используем безопасный способ получения URL
-                            $object['src'] = $this->getImageUrl($image->id);
-                            
-                            // Добавляем только дополнительную информацию об изображении, НЕ меняя пользовательские размеры
-                            $object['name'] = $image->name;
-                        } else {
-                            // Если изображение не найдено, помечаем как недоступный
-                            $object['src'] = null;
-                            $object['error'] = 'Image not found';
-                        }
-                    }
-                }
-            }
-        }
-
         return $boardData;
     }
 
     /**
-     * Получение правильного URL изображения
+     * Normalize state shape before persisting history snapshot.
+     * Image objects are stored with src-based contract only.
      */
-    private function getImageUrl(string $imageId): string
+    private function normalizeStateForStorage(array $state): array
     {
-        try {
-            // Пытаемся использовать именованный маршрут
-            return route('images.file', $imageId);
-        } catch (\Exception $e) {
-            // Если маршрут не найден, возвращаем базовый URL
-            return url("/api/v2/images/{$imageId}/download");
+        if (!isset($state['objects']) || !is_array($state['objects'])) {
+            return $state;
         }
+
+        foreach ($state['objects'] as &$object) {
+            if (!is_array($object)) {
+                continue;
+            }
+
+            if (($object['type'] ?? null) !== 'image') {
+                continue;
+            }
+
+            $allowedKeys = [
+                'id',
+                'type',
+                'src',
+                'position',
+                'width',
+                'height',
+                'properties',
+                'transform',
+                'created',
+            ];
+
+            $object = array_intersect_key($object, array_flip($allowedKeys));
+            unset($object['base64']);
+        }
+
+        unset($object);
+
+        return $state;
     }
 }

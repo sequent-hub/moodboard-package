@@ -2,6 +2,9 @@
 
 Этот документ фиксирует переезд API на `v2` без потери трассировки legacy путей.
 
+> Обновление контракта: модель `Image` удалена, таблица `images` не участвует в runtime-потоке.
+> Изображения хранятся во внешнем object storage, а доска работает через `src`.
+
 ## Общие правила
 
 - Legacy маршруты `/api/...` считаются историческими.
@@ -40,10 +43,10 @@
 - Стало: `POST /api/v2/images/upload`
 
 - Было: `GET /api/images/{id}`
-- Стало: `GET /api/v2/images/{imageId}`
+- Стало: `GET /api/v2/images/{id}` (заглушка `501`)
 
 - Было: `GET /api/images/{id}/file`
-- Стало: `GET /api/v2/images/{imageId}/download`
+- Стало: `GET /api/v2/images/{id}/download` (заглушка `501`)
 
 - Было: `GET /api/images/`
 - Стало: `GET /api/v2/images/` (заглушка `501`)
@@ -52,7 +55,7 @@
 - Стало: `POST /api/v2/images/bulk-delete` (заглушка `501`)
 
 - Было: `DELETE /api/images/{id}`
-- Стало: `DELETE /api/v2/images/{imageId}` (заглушка `501`)
+- Стало: `DELETE /api/v2/images/{id}` (заглушка `501`)
 
 ## Files
 

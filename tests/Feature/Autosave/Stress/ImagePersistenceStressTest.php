@@ -20,7 +20,7 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
         }
     }
 
-    public function test_it_keeps_image_id_during_ten_upload_save_load_cycles(): void
+    public function test_it_keeps_src_during_ten_upload_save_load_cycles(): void
     {
         for ($cycle = 1; $cycle <= 10; $cycle++) {
             $uploadResponse = $this->post('/api/v2/images/upload', [
@@ -28,7 +28,8 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                 'name' => "Cycle metadata {$cycle}",
             ])->assertOk()->assertJsonPath('success', true);
 
-            $imageId = $this->assertUploadResponseContainsRequiredFields($uploadResponse);
+            $src = (string) $uploadResponse->json('data.url');
+            $this->assertNotEmpty($src);
             $boardId = "board-image-cycle-{$cycle}";
 
             $this->saveBoardStateV2($boardId, [
@@ -37,7 +38,7 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                     [
                         'id' => "image-cycle-obj-{$cycle}",
                         'type' => 'image',
-                        'imageId' => $imageId,
+                        'src' => $src,
                         'position' => ['x' => 10 * $cycle, 'y' => 20 * $cycle],
                         'width' => 1,
                         'height' => 1,
@@ -50,8 +51,8 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                 ->assertOk()
                 ->assertJsonPath('success', true);
 
-            $savedImageId = $loadResponse->json('data.state.objects.0.imageId');
-            $this->assertSame($imageId, $savedImageId, "Image ID changed in cycle {$cycle}.");
+            $savedSrc = $loadResponse->json('data.state.objects.0.src');
+            $this->assertSame($src, $savedSrc, "src changed in cycle {$cycle}.");
         }
     }
 
@@ -83,8 +84,8 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                     'name' => "Diagnostics metadata {$cycle}",
                 ])->assertOk()->assertJsonPath('success', true);
 
-                $regularImageId = $this->assertUploadResponseContainsRequiredFields($regularUploadResponse);
-                $metadataImageId = $this->assertUploadResponseContainsRequiredFields($metadataUploadResponse);
+                $regularSrc = $this->assertUploadResponseContainsRequiredFields($regularUploadResponse);
+                $metadataSrc = $this->assertUploadResponseContainsRequiredFields($metadataUploadResponse);
 
                 $boardData = [
                     'name' => "Diagnostics board {$cycle}",
@@ -92,7 +93,7 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                         [
                             'id' => "diag-obj-regular-{$cycle}",
                             'type' => 'image',
-                            'imageId' => $regularImageId,
+                            'src' => $regularSrc,
                             'position' => ['x' => 100, 'y' => 100],
                             'width' => 64,
                             'height' => 64,
@@ -101,7 +102,7 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                         [
                             'id' => "diag-obj-meta-{$cycle}",
                             'type' => 'image',
-                            'imageId' => $metadataImageId,
+                            'src' => $metadataSrc,
                             'position' => ['x' => 220, 'y' => 100],
                             'width' => 1,
                             'height' => 1,
@@ -119,44 +120,26 @@ class ImagePersistenceStressTest extends AbstractAutosaveTestCase
                 $objects = $loadResponse->json('data.state.objects') ?? [];
                 $this->assertCount(2, $objects, "Unexpected object count in cycle {$cycle}.");
 
-                $loadedIds = array_values(array_filter(array_column($objects, 'imageId')));
-                $this->assertCount(2, $loadedIds, "Loaded objects missing imageId in cycle {$cycle}.");
-                $this->assertContains($regularImageId, $loadedIds, "Regular imageId missing in cycle {$cycle}.");
-                $this->assertContains($metadataImageId, $loadedIds, "Metadata imageId missing in cycle {$cycle}.");
-
-                $regularFile = $this->get("/api/v2/images/{$regularImageId}/download")->assertOk();
-                $metadataFile = $this->get("/api/v2/images/{$metadataImageId}/download")->assertOk();
-
-                $regularFileStats = $this->assertFileResponseHasNonEmptyBody(
-                    $regularFile,
-                    "Regular file body is empty in cycle {$cycle}."
-                );
-                $metadataFileStats = $this->assertFileResponseHasNonEmptyBody(
-                    $metadataFile,
-                    "Metadata file body is empty in cycle {$cycle}."
-                );
+                $loadedSrcs = array_values(array_filter(array_column($objects, 'src')));
+                $this->assertCount(2, $loadedSrcs, "Loaded objects missing src in cycle {$cycle}.");
+                $this->assertContains($regularSrc, $loadedSrcs, "Regular src missing in cycle {$cycle}.");
+                $this->assertContains($metadataSrc, $loadedSrcs, "Metadata src missing in cycle {$cycle}.");
 
                 $diagnosticRecord = [
                     'cycle' => $cycle,
                     'boardId' => $boardId,
                     'uploaded' => [
-                        'regularImageId' => $regularImageId,
-                        'metadataImageId' => $metadataImageId,
+                        'regularSrc' => $regularSrc,
+                        'metadataSrc' => $metadataSrc,
                     ],
-                    'savedPayloadImageIds' => [
-                        $boardData['objects'][0]['imageId'],
-                        $boardData['objects'][1]['imageId'],
+                    'savedPayloadSrcs' => [
+                        $boardData['objects'][0]['src'],
+                        $boardData['objects'][1]['src'],
                     ],
-                    'loadedImageIds' => $loadedIds,
+                    'loadedSrcs' => $loadedSrcs,
                     'saveMetadataResponse' => $saveResponses['metadata']->json(),
                     'saveHistoryResponse' => $saveResponses['history']->json(),
                     'loadResponse' => $loadResponse->json(),
-                    'fileChecks' => [
-                        'regularLength' => $regularFileStats['length'],
-                        'metadataLength' => $metadataFileStats['length'],
-                        'regularSha256' => $regularFileStats['sha256'],
-                        'metadataSha256' => $metadataFileStats['sha256'],
-                    ],
                     'timestamp' => date(DATE_ATOM),
                 ];
 
