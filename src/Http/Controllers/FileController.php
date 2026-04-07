@@ -2,12 +2,10 @@
 
 namespace Futurello\MoodBoard\Http\Controllers;
 
-use Futurello\MoodBoard\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
 
 class FileController extends Controller
@@ -38,50 +36,18 @@ class FileController extends Controller
             $extension = $uploadedFile->getClientOriginalExtension();
             $filename = Str::random(40) . '.' . $extension;
 
-            // Создаем хеш файла для дедупликации
-            $hash = hash_file('sha256', $uploadedFile->getRealPath());
-
-            // Проверяем, не существует ли уже такой файл
-            $existingFile = File::where('hash', $hash)->first();
-            if ($existingFile) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Файл уже существует',
-                    'data' => [
-                        'id' => $existingFile->id,
-                        'name' => $existingFile->name,
-                        'url' => $existingFile->url,
-                        'size' => $existingFile->size,
-                        'mime_type' => $existingFile->mime_type,
-                        'formatted_size' => $existingFile->formatted_size
-                    ]
-                ]);
-            }
-
             // Сохраняем файл
             $path = $uploadedFile->storeAs('files', $filename, 's3');
-
-            // Создаем запись в БД
-            $file = File::create([
-                'name' => $originalName,
-                'filename' => $filename,
-                'path' => $path,
-                'mime_type' => $uploadedFile->getMimeType(),
-                'size' => $uploadedFile->getSize(),
-                'extension' => $extension,
-                'hash' => $hash
-            ]);
+            $url = Storage::disk('s3')->url($path);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Файл успешно загружен',
                 'data' => [
-                    'id' => $file->id,
-                    'name' => $file->name,
-                    'url' => $file->url,
-                    'size' => $file->size,
-                    'mime_type' => $file->mime_type,
-                    'formatted_size' => $file->formatted_size
+                    'name' => $originalName,
+                    'url' => $url,
+                    'size' => $uploadedFile->getSize(),
+                    'mime_type' => $uploadedFile->getMimeType(),
                 ]
             ]);
 
@@ -99,30 +65,15 @@ class FileController extends Controller
     public function show($id)
     {
         try {
-            $file = File::findOrFail($id);
-
             return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $file->id,
-                    'name' => $file->name,
-                    'filename' => $file->filename,
-                    'url' => $file->url,
-                    'size' => $file->size,
-                    'mime_type' => $file->mime_type,
-                    'extension' => $file->extension,
-                    'formatted_size' => $file->formatted_size,
-                    'is_image' => $file->isImage(),
-                    'created_at' => $file->created_at->toISOString(),
-                    'updated_at' => $file->updated_at->toISOString()
-                ]
-            ]);
-
+                'success' => false,
+                'message' => 'File endpoints by id are deprecated in API v2. Use file url from moodboard state.',
+            ], 410);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Файл не найден'
-            ], 404);
+                'message' => 'File endpoints by id are deprecated in API v2. Use file url from moodboard state.',
+            ], 410);
         }
     }
 
@@ -131,41 +82,10 @@ class FileController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка валидации',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            $file = File::findOrFail($id);
-            
-            $file->update($request->only(['name']));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Файл успешно обновлен',
-                'data' => [
-                    'id' => $file->id,
-                    'name' => $file->name,
-                    'url' => $file->url,
-                    'size' => $file->size,
-                    'mime_type' => $file->mime_type
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка обновления файла: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'File endpoints by id are deprecated in API v2. Use file url from moodboard state.',
+        ], 410);
     }
 
     /**
@@ -173,24 +93,10 @@ class FileController extends Controller
      */
     public function download($id)
     {
-        try {
-            $file = File::findOrFail($id);
-
-            if (!Storage::disk('s3')->exists($file->path)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Файл не найден на диске'
-                ], 404);
-            }
-
-            return Storage::disk('s3')->download($file->path, $file->name);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка скачивания файла: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'File endpoints by id are deprecated in API v2. Use file url from moodboard state.',
+        ], 410);
     }
 
     /**
@@ -200,30 +106,8 @@ class FileController extends Controller
     {
         return response()->json([
             'success' => false,
-            'message' => 'File deletion is disabled by policy',
+            'message' => 'File endpoints by id are deprecated in API v2. Use file url from moodboard state.',
         ], 410);
-
-        /*
-        try {
-            $file = File::findOrFail($id);
-            $file->delete();
-
-            Log::info("File deleted: {$id}");
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Файл успешно удален'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('File destroy error: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка удаления файла: ' . $e->getMessage()
-            ], 500);
-        }
-        */
     }
 
 }

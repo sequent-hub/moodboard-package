@@ -59,17 +59,20 @@
 
 ## Files
 
+> Обновлено: файловый v2 runtime переведен в upload-only поток.
+> Маршруты с `fileId` сохранены в документе только как история изменений (legacy), в актуальном контракте они отключены.
+
 - Было: `POST /api/files/upload`
 - Стало: `POST /api/v2/files/upload`
 
 - Было: `GET /api/files/{id}`
-- Стало: `GET /api/v2/files/{fileId}`
+- Стало (legacy, отключено): `GET /api/v2/files/{fileId}`
 
 - Было: `GET /api/files/{id}/download`
-- Стало: `GET /api/v2/files/{fileId}/download`
+- Стало (legacy, отключено): `GET /api/v2/files/{fileId}/download`
 
 - Было: `PUT /api/files/{id}`
-- Стало: `PUT /api/v2/files/{fileId}` (заглушка `501`)
+- Стало (legacy, отключено): `PUT /api/v2/files/{fileId}`
 
 - Было: `DELETE /api/files/{id}`
-- Стало: `DELETE /api/v2/files/{fileId}` (заглушка `501`)
+- Стало (legacy, отключено): `DELETE /api/v2/files/{fileId}`

@@ -80,7 +80,10 @@
 ## Объекты (objects)
 
 **Обязательные поля:** `id`, `type`, `position`  
-**Опциональные:** `width`, `height`, `properties`, `transform`, `created`, `src`, `fileId`
+**Опциональные:** `width`, `height`, `properties`, `transform`, `created`, `src`, `fileId (legacy, deprecated)`
+
+> Примечание по файлам: актуальный runtime использует только URL файла в объекте (`src/url`) и `POST /api/v2/files/upload`.
+> Поле `fileId` сохранено в документе исключительно для истории обратной совместимости.
 
 **transform** — критично:
 - Бэкенд **не должен** удалять или фильтровать `transform`.

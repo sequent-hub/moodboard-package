@@ -55,6 +55,7 @@ php artisan migrate
 >
 > Важно: модель `Image` удалена из пакета, а таблица `images` не используется в runtime.
 > Хранение изображений выполняется во внешнем object storage (S3/CDN), в состоянии доски хранится `src`.
+> Важно: таблица `files` не используется в runtime. Для файлов актуален upload-only поток.
 
 ### Актуальные v2 endpoints
 
@@ -94,8 +95,7 @@ php artisan migrate
 #### Files (v2)
 
 - `POST /api/v2/files/upload` - Загрузка файла
-- `GET /api/v2/files/{fileId}` - Информация о файле
-- `GET /api/v2/files/{fileId}/download` - Скачивание файла
+- Legacy (история изменений, отключено): `GET /api/v2/files/{fileId}`, `GET /api/v2/files/{fileId}/download`, `PUT /api/v2/files/{fileId}`, `DELETE /api/v2/files/{fileId}`
 
 ### LEGACY (было, сохранено для истории)
 

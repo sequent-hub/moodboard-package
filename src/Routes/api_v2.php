@@ -40,13 +40,7 @@ Route::prefix('api/v2')->group(function () use ($v2NotImplemented) {
         Route::get('/{id}/file', $v2NotImplemented); // legacy alias: GET /api/images/{id}/file
     });
 
-    Route::prefix('files')->group(function () use ($v2NotImplemented) {
+    Route::prefix('files')->group(function () {
         Route::post('/upload', [FileController::class, 'upload']);
-        Route::get('/{fileId}', [FileController::class, 'show']);
-        Route::get('/{fileId}/download', [FileController::class, 'download']);
-
-        // TODO(v2): reserve legacy-compatible routes until dedicated handlers are implemented.
-        Route::put('/{fileId}', $v2NotImplemented); // legacy: PUT /api/files/{id}
-        Route::delete('/{fileId}', $v2NotImplemented); // legacy: DELETE /api/files/{id}
     });
 });
