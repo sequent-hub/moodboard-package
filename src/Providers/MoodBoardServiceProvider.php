@@ -11,6 +11,7 @@ use Illuminate\Database\Events\MigrationsEnded;
 use Illuminate\Database\Events\MigrationStarted;
 use Illuminate\Database\Events\MigrationEnded;
 use Futurello\MoodBoard\Http\Middleware\CorsMiddleware;
+use Futurello\MoodBoard\Console\Commands\MigrateMoodboardsToHistory;
 
 class MoodBoardServiceProvider extends ServiceProvider
 {
@@ -19,7 +20,11 @@ class MoodBoardServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Регистрируем пакет
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                MigrateMoodboardsToHistory::class,
+            ]);
+        }
     }
 
     /**
