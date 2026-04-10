@@ -137,9 +137,9 @@ class LegacyAssetMigrator
             return '';
         }
 
-        $localPath = $this->localStoragePath . '/' . $row->path;
+        $localPath = $this->resolveLocalPath((string) $row->path);
 
-        if (!file_exists($localPath)) {
+        if ($localPath === null) {
             $this->markedAsPlaceholder++;
             $this->errors[] = "Image file missing on disk: path={$row->path}, imageId={$imageId}";
             return '';
@@ -158,9 +158,9 @@ class LegacyAssetMigrator
             return '';
         }
 
-        $localPath = $this->localStoragePath . '/' . $row->path;
+        $localPath = $this->resolveLocalPath((string) $row->path);
 
-        if (!file_exists($localPath)) {
+        if ($localPath === null) {
             $this->markedAsPlaceholder++;
             $this->errors[] = "File missing on disk: path={$row->path}, fileId={$fileId}";
             return '';
@@ -308,6 +308,28 @@ class LegacyAssetMigrator
             $this->errors[] = "S3 upload failed for {$relativePath}: " . $e->getMessage();
             return '';
         }
+    }
+
+    private function resolveLocalPath(string $relativePath): ?string
+    {
+        $relativePath = ltrim($relativePath, '/');
+
+        $candidates = [
+            $this->localStoragePath . '/' . $relativePath,
+        ];
+
+        // Legacy files table points to files/*, but real files are stored under storage/app/public/files/*.
+        if (str_starts_with($relativePath, 'files/')) {
+            $candidates[] = $this->localStoragePath . '/public/' . $relativePath;
+        }
+
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function isAlreadyCdnUrl(?string $src): bool
