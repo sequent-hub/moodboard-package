@@ -27,6 +27,14 @@ class MigrateMoodboardsToHistory extends Command
         $localStoragePath = $this->detectStoragePath();
         $this->assetMigrator = new LegacyAssetMigrator($localStoragePath);
 
+        if (!$this->assetMigrator->hasRequiredCdnConfig()) {
+            $message = 'MOODBOARD_IMAGE_CDN_BASE_URL is not configured. Migration aborted to avoid mixed URL formats.';
+            $this->error($message);
+            Log::error('MigrateMoodboardsToHistory: ' . $message);
+
+            return self::FAILURE;
+        }
+
         $this->printHeader($dryRun, $singleBoardId);
 
         $query = MoodBoard::query()->orderBy('id');

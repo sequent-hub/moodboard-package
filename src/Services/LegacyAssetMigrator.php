@@ -24,6 +24,11 @@ class LegacyAssetMigrator
         $this->localStoragePath = rtrim($localStoragePath, '/');
     }
 
+    public function hasRequiredCdnConfig(): bool
+    {
+        return $this->cdnBaseUrl !== '';
+    }
+
     public function resetCounters(): void
     {
         $this->uploadedToS3 = 0;
@@ -375,7 +380,7 @@ class LegacyAssetMigrator
     private function normalizeToCdn(string $src): string
     {
         if ($this->cdnBaseUrl === '') {
-            return $src;
+            throw new \RuntimeException('CDN URL is not configured for moodboard asset migration.');
         }
 
         $objectPath = $this->extractObjectPath($src);
@@ -389,7 +394,7 @@ class LegacyAssetMigrator
     private function buildCdnUrl(string $s3Path): string
     {
         if ($this->cdnBaseUrl === '') {
-            return Storage::disk('s3')->url($s3Path);
+            throw new \RuntimeException('CDN URL is not configured for moodboard asset migration.');
         }
 
         return rtrim($this->cdnBaseUrl, '/') . '/' . ltrim($s3Path, '/');

@@ -30,7 +30,12 @@ class File extends Model
      */
     public function getUrlAttribute()
     {
-        return Storage::disk('s3')->url($this->path);
+        $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
+        if ($cdnBaseUrl === '') {
+            throw new LogicException('CDN URL is not configured for file URLs.');
+        }
+
+        return rtrim($cdnBaseUrl, '/') . '/' . ltrim($this->path, '/');
     }
 
     /**

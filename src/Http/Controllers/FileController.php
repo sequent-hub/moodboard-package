@@ -3,6 +3,7 @@
 namespace Futurello\MoodBoard\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -29,6 +30,7 @@ class FileController extends Controller
         }
 
         try {
+            $cdnBaseUrl = $this->requireCdnBaseUrl();
             $uploadedFile = $request->file('file');
             $originalName = $request->input('name', $uploadedFile->getClientOriginalName());
 
@@ -38,7 +40,7 @@ class FileController extends Controller
 
             // Сохраняем файл
             $path = $uploadedFile->storeAs('files', $filename, 's3');
-            $url = Storage::disk('s3')->url($path);
+            $url = $this->buildFileUrl($cdnBaseUrl, $path);
 
             return response()->json([
                 'success' => true,
@@ -108,6 +110,22 @@ class FileController extends Controller
             'success' => false,
             'message' => 'File endpoints by id are deprecated in API v2. Use file url from moodboard state.',
         ], 410);
+    }
+
+    private function buildFileUrl(string $cdnBaseUrl, string $objectPath): string
+    {
+        return rtrim($cdnBaseUrl, '/') . '/' . ltrim($objectPath, '/');
+    }
+
+    private function requireCdnBaseUrl(): string
+    {
+        $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
+        if ($cdnBaseUrl === '') {
+            Log::error('File upload aborted: MOODBOARD_IMAGE_CDN_BASE_URL is not configured.');
+            throw new \RuntimeException('CDN URL is not configured. Upload failed.');
+        }
+
+        return $cdnBaseUrl;
     }
 
 }
