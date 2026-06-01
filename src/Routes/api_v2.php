@@ -1,8 +1,9 @@
 <?php
 
-use Futurello\MoodBoard\Http\Controllers\MoodBoardController;
-use Futurello\MoodBoard\Http\Controllers\ImageController;
+use Futurello\MoodBoard\Http\Controllers\AiController;
 use Futurello\MoodBoard\Http\Controllers\FileController;
+use Futurello\MoodBoard\Http\Controllers\ImageController;
+use Futurello\MoodBoard\Http\Controllers\MoodBoardController;
 use Illuminate\Support\Facades\Route;
 
 $v2NotImplemented = static function () {
@@ -36,5 +37,13 @@ Route::prefix('api/v2')->group(function () use ($v2NotImplemented) {
 
     Route::prefix('files')->group(function () {
         Route::post('/upload', [FileController::class, 'upload']);
+    });
+
+    // AI proxy routes (порт server/src/routes/ai.js).
+    // Контракт payload и формат SSE — 1:1 с Node-заглушкой.
+    Route::prefix('ai')->group(function () {
+        Route::get('/providers', [AiController::class, 'providers']);
+        Route::post('/yandex-art/image', [AiController::class, 'image']);
+        Route::post('/{provider}/chat', [AiController::class, 'chat']);
     });
 });

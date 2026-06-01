@@ -12,6 +12,11 @@ use Illuminate\Database\Events\MigrationStarted;
 use Illuminate\Database\Events\MigrationEnded;
 use Futurello\MoodBoard\Http\Middleware\CorsMiddleware;
 use Futurello\MoodBoard\Console\Commands\MigrateMoodboardsToHistory;
+use Futurello\MoodBoard\Services\Ai\DeepSeekProvider;
+use Futurello\MoodBoard\Services\Ai\Support\ProviderRegistry;
+use Futurello\MoodBoard\Services\Ai\YandexArtProvider;
+use Futurello\MoodBoard\Services\Ai\YandexProvider;
+use Illuminate\Http\Client\Factory as HttpFactory;
 
 class MoodBoardServiceProvider extends ServiceProvider
 {
@@ -25,6 +30,10 @@ class MoodBoardServiceProvider extends ServiceProvider
                 MigrateMoodboardsToHistory::class,
             ]);
         }
+
+        $this->mergeConfigFrom(__DIR__.'/../../config/moodboard-ai.php', 'moodboard-ai');
+
+        $this->registerAiBindings();
     }
 
     /**
@@ -45,9 +54,67 @@ class MoodBoardServiceProvider extends ServiceProvider
         
         // Загружаем миграции
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
-        
+
+        // Публикация AI-конфига в config/ родительского приложения.
+        // Пользоваться: php artisan vendor:publish --tag=moodboard-ai-config
+        $this->publishes([
+            __DIR__.'/../../config/moodboard-ai.php' => config_path('moodboard-ai.php'),
+        ], 'moodboard-ai-config');
+
         // Регистрируем обработчики событий миграций
         $this->registerMigrationEventListeners();
+    }
+
+    /**
+     * Биндинги AI-провайдеров и реестра.
+     *
+     * Каждый провайдер инстанциируется один раз на запрос (singleton),
+     * читает свою секцию из config('moodboard-ai.providers.*'). Если ключи
+     * не заданы — провайдер возвращает isEnabled()=false и контроллер
+     * вернёт клиенту 503 для именно этого провайдера.
+     */
+    private function registerAiBindings(): void
+    {
+        $this->app->singleton(DeepSeekProvider::class, function ($app) {
+            return new DeepSeekProvider(
+                $app->make(HttpFactory::class),
+                (array) config('moodboard-ai.providers.deepseek'),
+                (array) config('moodboard-ai.http'),
+            );
+        });
+
+        $this->app->singleton(YandexProvider::class, function ($app) {
+            return new YandexProvider(
+                $app->make(HttpFactory::class),
+                (array) config('moodboard-ai.providers.yandex'),
+                (array) config('moodboard-ai.http'),
+            );
+        });
+
+        $this->app->singleton(YandexArtProvider::class, function ($app) {
+            return new YandexArtProvider(
+                $app->make(HttpFactory::class),
+                (array) config('moodboard-ai.providers.yandex_art'),
+                (array) config('moodboard-ai.http'),
+            );
+        });
+
+        $this->app->singleton(ProviderRegistry::class, function ($app) {
+            return new ProviderRegistry([
+                'yandex' => [
+                    'label' => 'YandexGPT',
+                    'provider' => $app->make(YandexProvider::class),
+                ],
+                'yandex-art' => [
+                    'label' => 'YandexART',
+                    'provider' => $app->make(YandexArtProvider::class),
+                ],
+                'deepseek' => [
+                    'label' => 'DeepSeek',
+                    'provider' => $app->make(DeepSeekProvider::class),
+                ],
+            ]);
+        });
     }
 
     /**
