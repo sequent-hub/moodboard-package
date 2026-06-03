@@ -45,6 +45,10 @@ class YandexArtProvider implements ImageProvider
 
     public function generateImage(array $payload): array
     {
+        if (! empty($payload['referenceImages']) && is_array($payload['referenceImages'])) {
+            throw new AiHttpException(501, 'YandexART provider does not support reference images');
+        }
+
         if (! $this->isEnabled()) {
             throw new AiHttpException(503, 'YandexART provider is not configured');
         }

@@ -28,6 +28,9 @@ class AiImageRequest extends FormRequest
             'seed' => ['sometimes', 'integer', 'min:0'],
             'mimeType' => ['sometimes', 'string'],
             'model' => ['sometimes', 'string'],
+            'referenceImages' => ['sometimes', 'array'],
+            'referenceImages.*.mimeType' => ['required_with:referenceImages.*', 'string'],
+            'referenceImages.*.data' => ['required_with:referenceImages.*', 'string'],
         ];
     }
 
@@ -40,6 +43,7 @@ class AiImageRequest extends FormRequest
      *   seed: int|null,
      *   mimeType: string|null,
      *   model: string|null,
+     *   referenceImages?: list<array{mimeType: string, data: string}>,
      * }
      */
     public function normalized(): array
@@ -53,7 +57,7 @@ class AiImageRequest extends FormRequest
         $model = $this->input('model');
         $modelString = (is_string($model) && $model !== '') ? $model : null;
 
-        return [
+        $result = [
             'prompt' => trim((string) $this->input('prompt')),
             'negativePrompt' => $negativeString,
             'widthRatio' => (int) $this->input('widthRatio', 1),
@@ -62,6 +66,13 @@ class AiImageRequest extends FormRequest
             'mimeType' => $mimeString,
             'model' => $modelString,
         ];
+
+        $refs = $this->input('referenceImages');
+        if (is_array($refs) && count($refs) > 0) {
+            $result['referenceImages'] = $refs;
+        }
+
+        return $result;
     }
 
     protected function failedValidation(Validator $validator): void

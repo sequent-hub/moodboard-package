@@ -9,6 +9,7 @@ use Futurello\MoodBoard\Services\Ai\Support\ProviderRegistry;
 use Futurello\MoodBoard\Services\Ai\Support\SseStreamWriter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -95,10 +96,12 @@ class AiController extends Controller
             try {
                 $deltas = $client->chatStream($payload);
             } catch (AiHttpException $e) {
+                Log::warning('[moodboard.ai] stream init error', ['status' => $e->status, 'message' => $e->getMessage()]);
                 $sse->error($e->status.': '.$e->getMessage());
                 $sse->done();
                 return;
             } catch (Throwable $e) {
+                Log::error('[moodboard.ai] stream init unexpected error', ['message' => $e->getMessage()]);
                 $sse->error('500: '.$e->getMessage());
                 $sse->done();
                 return;
@@ -113,9 +116,11 @@ class AiController extends Controller
                 }
                 $sse->done();
             } catch (AiHttpException $e) {
+                Log::warning('[moodboard.ai] stream delta error', ['status' => $e->status, 'message' => $e->getMessage()]);
                 $sse->error($e->status.': '.$e->getMessage());
                 $sse->done();
             } catch (Throwable $e) {
+                Log::error('[moodboard.ai] stream delta unexpected error', ['message' => $e->getMessage()]);
                 $sse->error($e->getMessage() ?: 'stream error');
                 $sse->done();
             }
@@ -129,6 +134,12 @@ class AiController extends Controller
 
     private function errorResponse(AiHttpException $e): JsonResponse
     {
+        Log::warning('[moodboard.ai] provider error', [
+            'status' => $e->status,
+            'message' => $e->getMessage(),
+            'details' => $e->details,
+        ]);
+
         $body = ['error' => $e->getMessage()];
         if ($e->details !== null) {
             $body['details'] = $e->details;

@@ -80,4 +80,48 @@ class AiImageApiTest extends TestCase
             ->assertStatus(400)
             ->assertJsonStructure(['error', 'details']);
     }
+
+    public function test_valid_reference_images_pass_validation_and_trigger_501(): void
+    {
+        // Валидация пропускает referenceImages → guard в провайдере кидает 501 (не 400, не 503).
+        $this->postJson('/api/v2/ai/yandex-art/image', [
+            'prompt' => 'sunset',
+            'referenceImages' => [
+                ['mimeType' => 'image/jpeg', 'data' => 'BASE64=='],
+            ],
+        ])
+            ->assertStatus(501)
+            ->assertJsonPath('error', 'YandexART provider does not support reference images');
+    }
+
+    public function test_validation_rejects_reference_image_without_mime_type(): void
+    {
+        $this->postJson('/api/v2/ai/yandex-art/image', [
+            'prompt' => 'sunset',
+            'referenceImages' => [
+                ['data' => 'BASE64=='],
+            ],
+        ])
+            ->assertStatus(400)
+            ->assertJsonStructure(['error', 'details']);
+    }
+
+    public function test_empty_reference_images_array_does_not_trigger_guard(): void
+    {
+        Http::fake([
+            'llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync' => Http::response(['id' => 'op-ref'], 200),
+            'llm.api.cloud.yandex.net:443/operations/op-ref' => Http::response([
+                'done' => true,
+                'response' => ['image' => 'REFDATA'],
+            ], 200),
+        ]);
+
+        // Пустой массив referenceImages → ключ не кладётся в payload → guard не срабатывает.
+        $this->postJson('/api/v2/ai/yandex-art/image', [
+            'prompt' => 'sunset',
+            'referenceImages' => [],
+        ])
+            ->assertOk()
+            ->assertJsonPath('imageBase64', 'REFDATA');
+    }
 }
