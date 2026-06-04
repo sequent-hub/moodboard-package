@@ -24,21 +24,18 @@ class ImageController extends Controller
 
     public function upload(Request $request)
     {
-        // Улучшенная валидация
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,bmp|max:10240', // 10MB макс
+            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,bmp|max:10240',
             'name' => 'sometimes|string|max:255',
             'width' => 'sometimes|integer|min:1',
             'height' => 'sometimes|integer|min:1'
         ]);
 
         try {
-            $cdnBaseUrl = $this->requireCdnBaseUrl();
             $file = $request->file('image');
-            
-            // Дополнительная проверка типа файла
+
             if (!in_array($file->getClientMimeType(), [
-                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                'image/jpeg', 'image/jpg', 'image/png', 'image/gif',
                 'image/webp', 'image/bmp'
             ])) {
                 return response()->json([
@@ -46,32 +43,32 @@ class ImageController extends Controller
                     'message' => 'Неподдерживаемый тип файла'
                 ], 422);
             }
-            
-            // Генерируем уникальное имя файла
+
             $extension = $file->getClientOriginalExtension();
             $filename = time() . '_' . Str::random(10) . '.' . $extension;
-            $path = 'images/' . date('Y/m') . '/' . $filename; // Организуем по папкам год/месяц
+            $path = 'images/' . date('Y/m') . '/' . $filename;
 
-            // Создаем директорию если не существует
-            $directory = dirname($path);
-            if (!Storage::disk('s3')->exists($directory)) {
-                Storage::disk('s3')->makeDirectory($directory);
-            }
-
-            // Сохраняем файл
-            Storage::disk('s3')->put($path, file_get_contents($file));
-
-            // Получаем размеры изображения
             $imageInfo = getimagesize($file->getPathname());
             $width = $request->input('width', $imageInfo[0] ?? 100);
             $height = $request->input('height', $imageInfo[1] ?? 100);
-            $storageUrl = Storage::disk('s3')->url($path);
-            $url = $this->buildImageUrl($cdnBaseUrl, $path);
-            Log::info('Image uploaded to object storage', [
-                'path' => $path,
-                'storage_url' => $storageUrl,
-                'response_url' => $url,
-            ]);
+
+            $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
+
+            if ($cdnBaseUrl !== '') {
+                $directory = dirname($path);
+                if (!Storage::disk('s3')->exists($directory)) {
+                    Storage::disk('s3')->makeDirectory($directory);
+                }
+                Storage::disk('s3')->put($path, file_get_contents($file));
+                $url = $this->buildImageUrl($cdnBaseUrl, $path);
+                Log::info('Image uploaded to object storage (CDN)', ['path' => $path, 'url' => $url]);
+            } else {
+                // CDN не настроен — сохраняем в public disk (storage/app/public),
+                // файл доступен через симлинк public/storage/{path} (только для dev).
+                Storage::disk('public')->put($path, file_get_contents($file));
+                $url = url('storage/' . $path);
+                Log::info('Image saved to local storage (CDN not configured)', ['path' => $path, 'url' => $url]);
+            }
 
             $response = response()->json([
                 'success' => true,
@@ -162,15 +159,5 @@ class ImageController extends Controller
         return rtrim($cdnBaseUrl, '/') . '/' . ltrim($objectPath, '/');
     }
 
-    private function requireCdnBaseUrl(): string
-    {
-        $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
-        if ($cdnBaseUrl === '') {
-            Log::error('Image upload aborted: MOODBOARD_IMAGE_CDN_BASE_URL is not configured.');
-            throw new \RuntimeException('CDN URL is not configured. Upload failed.');
-        }
-
-        return $cdnBaseUrl;
-    }
 
 }
