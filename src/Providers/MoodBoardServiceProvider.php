@@ -153,7 +153,7 @@ class MoodBoardServiceProvider extends ServiceProvider
             // Логируем только миграции нашего пакета
             if ($this->isMoodBoardMigration($event->migration)) {
                 Log::channel('single')->info('⚡ [MOODBOARD MIGRATION] Starting individual migration', [
-                    'migration' => $event->migration->getMigrationName(),
+                    'migration' => (new \ReflectionClass($event->migration))->getFileName(),
                     'file' => $event->migration->getConnection() ?? 'default',
                     'timestamp' => now()->toISOString(),
                     'memory_usage' => memory_get_usage(true),
@@ -166,7 +166,7 @@ class MoodBoardServiceProvider extends ServiceProvider
             // Логируем только миграции нашего пакета
             if ($this->isMoodBoardMigration($event->migration)) {
                 Log::channel('single')->info('✅ [MOODBOARD MIGRATION] Completed individual migration', [
-                    'migration' => $event->migration->getMigrationName(),
+                    'migration' => (new \ReflectionClass($event->migration))->getFileName(),
                     'file' => $event->migration->getConnection() ?? 'default',
                     'timestamp' => now()->toISOString(),
                     'memory_usage' => memory_get_usage(true),
