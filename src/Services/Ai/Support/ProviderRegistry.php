@@ -17,7 +17,11 @@ use Futurello\MoodBoard\Services\Ai\Exceptions\AiHttpException;
 class ProviderRegistry
 {
     /**
-     * @param  array<string, array{label: string, provider: ChatProvider|ImageProvider}>  $entries
+     * @param  array<string, array{label: string, provider: ChatProvider|ImageProvider, supportedRatios: list<string>|null}>  $entries
+     *
+     * supportedRatios — список id форматов из FORMAT_OPTIONS на фронте, которые поддерживает провайдер
+     * (например ['1:1','3:2','2:3']), либо null — без ограничений (фронт показывает все форматы).
+     * Зеркальный контракт описан в server/src/routes/ai.js (Node-заглушка для dev).
      */
     public function __construct(private readonly array $entries)
     {
@@ -62,16 +66,17 @@ class ProviderRegistry
     }
 
     /**
-     * @return list<array{id: string, label: string, enabled: bool}>
+     * @return list<array{id: string, label: string, enabled: bool, supportedRatios: list<string>|null}>
      */
     public function list(): array
     {
         $list = [];
         foreach ($this->entries as $id => $entry) {
             $list[] = [
-                'id' => $id,
-                'label' => $entry['label'],
-                'enabled' => $entry['provider']->isEnabled(),
+                'id'              => $id,
+                'label'           => $entry['label'],
+                'enabled'         => $entry['provider']->isEnabled(),
+                'supportedRatios' => $entry['supportedRatios'] ?? null,
             ];
         }
 

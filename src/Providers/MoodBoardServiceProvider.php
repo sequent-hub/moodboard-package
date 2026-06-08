@@ -100,18 +100,24 @@ class MoodBoardServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(ProviderRegistry::class, function ($app) {
+            // supportedRatios: null — без ограничений по форматам (фронт показывает все варианты).
+            // При добавлении openai-image указать ['1:1','3:2','2:3'] — OpenAI Images API
+            // поддерживает только три размера (1024×1024 / 1536×1024 / 1024×1536).
             return new ProviderRegistry([
                 'yandex' => [
-                    'label' => 'YandexGPT',
-                    'provider' => $app->make(YandexProvider::class),
+                    'label'           => 'YandexGPT',
+                    'provider'        => $app->make(YandexProvider::class),
+                    'supportedRatios' => null,
                 ],
                 'yandex-art' => [
-                    'label' => 'YandexART',
-                    'provider' => $app->make(YandexArtProvider::class),
+                    'label'           => 'YandexART',
+                    'provider'        => $app->make(YandexArtProvider::class),
+                    'supportedRatios' => null,
                 ],
                 'deepseek' => [
-                    'label' => 'DeepSeek',
-                    'provider' => $app->make(DeepSeekProvider::class),
+                    'label'           => 'DeepSeek',
+                    'provider'        => $app->make(DeepSeekProvider::class),
+                    'supportedRatios' => null,
                 ],
             ]);
         });
