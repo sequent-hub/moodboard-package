@@ -43,7 +43,10 @@ class AiProvidersApiTest extends TestCase
             ->assertJsonPath('providers.1.supportedRatios', null)
             ->assertJsonPath('providers.2.id', 'deepseek')
             ->assertJsonPath('providers.2.enabled', false)
-            ->assertJsonPath('providers.2.supportedRatios', null);
+            ->assertJsonPath('providers.2.supportedRatios', null)
+            ->assertJsonPath('providers.3.id', 'openai-image')
+            ->assertJsonPath('providers.3.enabled', false)
+            ->assertJsonPath('providers.3.supportedRatios', ['1:1', '3:2', '2:3']);
     }
 
     public function test_supported_ratios_are_forwarded_as_is_in_provider_list(): void

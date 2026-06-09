@@ -17,8 +17,10 @@ use Futurello\MoodBoard\Services\Ai\Exceptions\AiHttpException;
 class ProviderRegistry
 {
     /**
-     * @param  array<string, array{label: string, provider: ChatProvider|ImageProvider, supportedRatios: list<string>|null}>  $entries
+     * @param  array<string, array{label: string, provider?: ChatProvider|ImageProvider, supportedRatios: list<string>|null}>  $entries
      *
+     * provider — опционален: запись без провайдера попадает в /providers с enabled=false
+     * и служит единственным источником метаданных (supportedRatios) для фронта.
      * supportedRatios — список id форматов из FORMAT_OPTIONS на фронте, которые поддерживает провайдер
      * (например ['1:1','3:2','2:3']), либо null — без ограничений (фронт показывает все форматы).
      * Зеркальный контракт описан в server/src/routes/ai.js (Node-заглушка для dev).
@@ -34,7 +36,7 @@ class ProviderRegistry
             throw new AiHttpException(404, "Unknown provider: {$id}");
         }
 
-        $provider = $entry['provider'];
+        $provider = $entry['provider'] ?? null;
         if (! $provider instanceof ChatProvider) {
             throw new AiHttpException(404, "Provider \"{$id}\" does not support chat");
         }
@@ -53,7 +55,7 @@ class ProviderRegistry
             throw new AiHttpException(404, "Unknown provider: {$id}");
         }
 
-        $provider = $entry['provider'];
+        $provider = $entry['provider'] ?? null;
         if (! $provider instanceof ImageProvider) {
             throw new AiHttpException(404, "Provider \"{$id}\" does not support image generation");
         }
@@ -72,10 +74,11 @@ class ProviderRegistry
     {
         $list = [];
         foreach ($this->entries as $id => $entry) {
+            $provider = $entry['provider'] ?? null;
             $list[] = [
                 'id'              => $id,
                 'label'           => $entry['label'],
-                'enabled'         => $entry['provider']->isEnabled(),
+                'enabled'         => $provider !== null && $provider->isEnabled(),
                 'supportedRatios' => $entry['supportedRatios'] ?? null,
             ];
         }
