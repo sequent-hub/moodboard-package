@@ -59,10 +59,10 @@ class AiController extends Controller
         return response()->json(['text' => $result['text']]);
     }
 
-    public function image(AiImageRequest $request): JsonResponse
+    public function image(string $provider, AiImageRequest $request): JsonResponse
     {
         try {
-            $client = $this->registry->image('yandex-art');
+            $client = $this->registry->image($provider);
             $payload = $request->normalized();
             $result = $client->generateImage($payload);
         } catch (AiHttpException $e) {

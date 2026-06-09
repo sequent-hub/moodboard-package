@@ -49,6 +49,11 @@ return [
             'default_model' => env('MOODBOARD_AI_DEEPSEEK_MODEL', 'deepseek-chat'),
         ],
 
+        'openai_image' => [
+            'api_key' => env('OPENAI_API_KEY', ''),
+            'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1.5'),
+        ],
+
     ],
 
 ];
