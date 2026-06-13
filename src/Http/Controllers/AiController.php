@@ -4,12 +4,16 @@ namespace Futurello\MoodBoard\Http\Controllers;
 
 use Futurello\MoodBoard\Http\Requests\AiChatRequest;
 use Futurello\MoodBoard\Http\Requests\AiImageRequest;
+use Futurello\MoodBoard\Http\Requests\AiModel3dRequest;
 use Futurello\MoodBoard\Services\Ai\Exceptions\AiHttpException;
 use Futurello\MoodBoard\Services\Ai\Support\ProviderRegistry;
 use Futurello\MoodBoard\Services\Ai\Support\SseStreamWriter;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -26,8 +30,10 @@ use Throwable;
  */
 class AiController extends Controller
 {
-    public function __construct(private readonly ProviderRegistry $registry)
-    {
+    public function __construct(
+        private readonly ProviderRegistry $registry,
+        private readonly HttpFactory $http,
+    ) {
     }
 
     public function providers(): JsonResponse
@@ -72,6 +78,152 @@ class AiController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    /**
+     * POST /api/v2/ai/{provider}/model3d — создать джоб генерации 3D-модели.
+     */
+    public function submitModel3d(string $provider, AiModel3dRequest $request): JsonResponse
+    {
+        try {
+            $client = $this->registry->model3d($provider);
+            $result = $client->submitModel3d($request->normalized());
+        } catch (AiHttpException $e) {
+            return $this->errorResponse($e);
+        } catch (Throwable $e) {
+            Log::error('[moodboard.ai] model3d submit error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse(new AiHttpException(500, 'Internal server error'));
+        }
+
+        return response()->json(['jobId' => $result['jobId']]);
+    }
+
+    /**
+     * GET /api/v2/ai/{provider}/model3d/{jobId} — статус джоба.
+     *
+     * При DONE скачиваем GLB c временного URL Tencent, кладём в хранилище
+     * доски (как картинки) и возвращаем уже наш URL — чтобы вьювер грузил
+     * стабильную ссылку, а не протухающую за 24ч ссылку Tencent.
+     */
+    public function pollModel3d(string $provider, string $jobId): JsonResponse
+    {
+        try {
+            $client = $this->registry->model3d($provider);
+            $status = $client->queryModel3d($jobId);
+        } catch (AiHttpException $e) {
+            return $this->errorResponse($e);
+        } catch (Throwable $e) {
+            Log::error('[moodboard.ai] model3d poll error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse(new AiHttpException(500, 'Internal server error'));
+        }
+
+        if ($status['status'] !== 'done') {
+            return response()->json([
+                'status' => $status['status'],
+                'progress' => $status['status'] === 'running' ? 50 : 5,
+                'stage' => null,
+                'previewBase64' => null,
+                'mimeType' => null,
+                'modelUrl' => null,
+                'format' => null,
+                'error' => $status['error'] ?? null,
+            ]);
+        }
+
+        try {
+            $modelUrl = $this->storeRemoteFile($status['glbUrl'], 'glb', 'model/gltf-binary');
+        } catch (Throwable $e) {
+            Log::error('[moodboard.ai] model3d GLB store error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse(new AiHttpException(502, 'Не удалось сохранить 3D-модель'));
+        }
+
+        [$previewBase64, $previewMime] = $this->fetchPreview($status['previewUrl'] ?? null);
+
+        return response()->json([
+            'status' => 'done',
+            'progress' => 100,
+            'stage' => null,
+            'previewBase64' => $previewBase64,
+            'mimeType' => $previewMime,
+            'modelUrl' => $modelUrl,
+            'format' => 'glb',
+            'error' => null,
+        ]);
+    }
+
+    /**
+     * Скачивает файл по URL и кладёт в хранилище (S3/CDN или public disk),
+     * возвращает публичный URL. Расширение задаём явно — вьювер матчит
+     * загрузчик по расширению (.glb), не по content-sniff.
+     */
+    private function storeRemoteFile(string $sourceUrl, string $extension, string $mime): string
+    {
+        $response = $this->http->withOptions(['verify' => $this->hunyuanVerify()])->timeout(120)->get($sourceUrl);
+        if (! $response->successful()) {
+            throw new \RuntimeException('download failed: '.$response->status());
+        }
+
+        $bytes = $response->body();
+        $filename = time().'_'.Str::random(10).'.'.$extension;
+        $path = 'models/'.date('Y/m').'/'.$filename;
+
+        $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
+
+        if ($cdnBaseUrl !== '') {
+            Storage::disk('s3')->put($path, $bytes, ['ContentType' => $mime]);
+
+            return rtrim($cdnBaseUrl, '/').'/'.ltrim($path, '/');
+        }
+
+        Storage::disk('public')->put($path, $bytes);
+
+        return url('storage/'.$path);
+    }
+
+    /**
+     * Тянет превью-картинку и возвращает [base64, mime] или [null, null].
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function fetchPreview(?string $previewUrl): array
+    {
+        if (! is_string($previewUrl) || $previewUrl === '') {
+            return [null, null];
+        }
+
+        try {
+            $response = $this->http->withOptions(['verify' => $this->hunyuanVerify()])->timeout(60)->get($previewUrl);
+            if (! $response->successful()) {
+                return [null, null];
+            }
+
+            $mime = $response->header('Content-Type') ?: 'image/png';
+
+            return [base64_encode($response->body()), $mime];
+        } catch (Throwable $e) {
+            Log::warning('[moodboard.ai] model3d preview fetch failed', ['message' => $e->getMessage()]);
+
+            return [null, null];
+        }
+    }
+
+    /**
+     * Значение опции verify для скачивания файлов Tencent (CA-бандл или bool).
+     *
+     * @return string|bool
+     */
+    private function hunyuanVerify(): string|bool
+    {
+        $config = (array) config('moodboard-ai.providers.hunyuan_3d');
+        $caBundle = (string) ($config['ca_bundle'] ?? '');
+        if ($caBundle !== '' && is_file($caBundle)) {
+            return $caBundle;
+        }
+
+        return (bool) ($config['verify_ssl'] ?? true);
     }
 
     private function streamChat($client, array $payload): StreamedResponse

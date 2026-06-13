@@ -44,6 +44,10 @@ Route::prefix('api/v2')->group(function () use ($v2NotImplemented) {
     Route::prefix('ai')->group(function () {
         Route::get('/providers', [AiController::class, 'providers']);
         Route::post('/{provider}/image', [AiController::class, 'image']);
+        // 3D-генерация (Hunyuan 3D): submit -> poll. Объявлены ДО /{provider}/chat,
+        // т.к. отличаются последним сегментом, коллизии нет.
+        Route::post('/{provider}/model3d', [AiController::class, 'submitModel3d']);
+        Route::get('/{provider}/model3d/{jobId}', [AiController::class, 'pollModel3d']);
         Route::post('/{provider}/chat', [AiController::class, 'chat']);
     });
 });

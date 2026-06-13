@@ -4,6 +4,7 @@ namespace Futurello\MoodBoard\Services\Ai\Support;
 
 use Futurello\MoodBoard\Services\Ai\Contracts\ChatProvider;
 use Futurello\MoodBoard\Services\Ai\Contracts\ImageProvider;
+use Futurello\MoodBoard\Services\Ai\Contracts\Model3dProvider;
 use Futurello\MoodBoard\Services\Ai\Exceptions\AiHttpException;
 
 /**
@@ -58,6 +59,25 @@ class ProviderRegistry
         $provider = $entry['provider'] ?? null;
         if (! $provider instanceof ImageProvider) {
             throw new AiHttpException(404, "Provider \"{$id}\" does not support image generation");
+        }
+
+        if (! $provider->isEnabled()) {
+            throw new AiHttpException(503, "Provider \"{$id}\" is not configured");
+        }
+
+        return $provider;
+    }
+
+    public function model3d(string $id): Model3dProvider
+    {
+        $entry = $this->entries[$id] ?? null;
+        if ($entry === null) {
+            throw new AiHttpException(404, "Unknown provider: {$id}");
+        }
+
+        $provider = $entry['provider'];
+        if (! $provider instanceof Model3dProvider) {
+            throw new AiHttpException(404, "Provider \"{$id}\" does not support 3D model generation");
         }
 
         if (! $provider->isEnabled()) {

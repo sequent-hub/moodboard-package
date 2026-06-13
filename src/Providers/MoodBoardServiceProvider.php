@@ -13,6 +13,7 @@ use Illuminate\Database\Events\MigrationEnded;
 use Futurello\MoodBoard\Http\Middleware\CorsMiddleware;
 use Futurello\MoodBoard\Console\Commands\MigrateMoodboardsToHistory;
 use Futurello\MoodBoard\Services\Ai\DeepSeekProvider;
+use Futurello\MoodBoard\Services\Ai\Hunyuan3dProvider;
 use Futurello\MoodBoard\Services\Ai\OpenAiImageProvider;
 use Futurello\MoodBoard\Services\Ai\Support\ProviderRegistry;
 use Futurello\MoodBoard\Services\Ai\YandexArtProvider;
@@ -108,6 +109,14 @@ class MoodBoardServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(Hunyuan3dProvider::class, function ($app) {
+            return new Hunyuan3dProvider(
+                $app->make(HttpFactory::class),
+                (array) config('moodboard-ai.providers.hunyuan_3d'),
+                (array) config('moodboard-ai.http'),
+            );
+        });
+
         $this->app->singleton(ProviderRegistry::class, function ($app) {
             return new ProviderRegistry([
                 'yandex' => [
@@ -129,6 +138,10 @@ class MoodBoardServiceProvider extends ServiceProvider
                     'label'           => 'OpenAI Images',
                     'provider'        => $app->make(OpenAiImageProvider::class),
                     'supportedRatios' => ['1:1', '3:2', '2:3'],
+                ],
+                'hunyuan-3d' => [
+                    'label' => 'Hunyuan 3D',
+                    'provider' => $app->make(Hunyuan3dProvider::class),
                 ],
             ]);
         });

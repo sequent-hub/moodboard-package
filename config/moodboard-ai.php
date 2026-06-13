@@ -54,6 +54,25 @@ return [
             'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1.5'),
         ],
 
+        // Tencent Hunyuan To 3D (TencentCloud API 3.0, TC3-HMAC).
+        // ТОЛЬКО для локального теста: прямой вызов Tencent, минуя «Трубу»/«Бухгалтера».
+        // Подпись требует ПАРУ secret_id + secret_key (одного ключа недостаточно).
+        'hunyuan_3d' => [
+            'secret_id' => env('MOODBOARD_AI_HUNYUAN3D_SECRET_ID', ''),
+            'secret_key' => env('MOODBOARD_AI_HUNYUAN3D_SECRET_KEY', ''),
+            'host' => env('MOODBOARD_AI_HUNYUAN3D_HOST', 'hunyuan.intl.tencentcloudapi.com'),
+            'service' => env('MOODBOARD_AI_HUNYUAN3D_SERVICE', 'hunyuan'),
+            'region' => env('MOODBOARD_AI_HUNYUAN3D_REGION', 'ap-guangzhou'),
+            'version' => env('MOODBOARD_AI_HUNYUAN3D_VERSION', '2023-09-01'),
+            'submit_action' => env('MOODBOARD_AI_HUNYUAN3D_SUBMIT_ACTION', 'SubmitHunyuanTo3DProJob'),
+            'query_action' => env('MOODBOARD_AI_HUNYUAN3D_QUERY_ACTION', 'QueryHunyuanTo3DProJob'),
+            // Путь к CA-бандлу (cacert.pem) для проверки SSL. Нужен на Windows-PHP,
+            // где curl.cainfo не настроен. Если пусто — verify=true (системный стор).
+            // verify_ssl=false отключает проверку (НЕ для прода).
+            'ca_bundle' => env('MOODBOARD_AI_HUNYUAN3D_CA_BUNDLE', ''),
+            'verify_ssl' => filter_var(env('MOODBOARD_AI_HUNYUAN3D_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN),
+        ],
+
     ],
 
 ];
