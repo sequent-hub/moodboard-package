@@ -6,20 +6,19 @@ use Futurello\MoodBoard\Models\MoodBoard;
 use Futurello\MoodBoard\Models\MoodboardHistory;
 use Futurello\MoodBoard\Services\MoodboardHistoryService;
 use Futurello\MoodBoard\Services\MoodboardMetaService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Validator;
 
 class MoodBoardController extends Controller
 {
     public function __construct(
         private readonly MoodboardHistoryService $moodboardHistoryService,
         private readonly MoodboardMetaService $moodboardMetaService
-    ) {
-    }
+    ) {}
 
     /**
      * Handle OPTIONS requests for CORS
@@ -84,7 +83,7 @@ class MoodBoardController extends Controller
         try {
             $moodboard = MoodBoard::findByBoardId($moodboard_id);
 
-            if (!$moodboard) {
+            if (! $moodboard) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Moodboard not found',
@@ -102,7 +101,7 @@ class MoodBoardController extends Controller
 
             $historyRow = $historyQuery->first();
 
-            if (!$historyRow) {
+            if (! $historyRow) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Moodboard version not found',
@@ -144,7 +143,7 @@ class MoodBoardController extends Controller
                 'success' => false,
                 'message' => 'Некорректные данные',
                 'errors' => $validator->errors(),
-                'received_data' => $request->all() // Для отладки
+                'received_data' => $request->all(), // Для отладки
             ], 422);
         }
 
@@ -156,14 +155,14 @@ class MoodBoardController extends Controller
             $boardData = $request->input('boardData') ?? $request->input('data') ?? [];
             // Поддерживаем settings как на верхнем уровне, так и внутри boardData/data
             $settings = $request->input('settings');
-            if (!is_array($settings)) {
+            if (! is_array($settings)) {
                 $settingsFromBoardData = $boardData['settings'] ?? null;
                 $settings = is_array($settingsFromBoardData) ? $settingsFromBoardData : null;
             }
 
             // Очищаем данные изображений от base64, сохраняем URL изображения в src
             $cleanedBoardData = $this->cleanImageData($boardData);
-            
+
             // Создаем или обновляем доску
             $board = MoodBoard::createOrUpdateBoard($boardId, $cleanedBoardData, $settings);
 
@@ -173,7 +172,7 @@ class MoodBoardController extends Controller
                 'success' => true,
                 'message' => 'Данные успешно сохранены',
                 'timestamp' => $board->last_saved_at->toISOString(),
-                'version' => $board->version
+                'version' => $board->version,
             ]);
 
         } catch (\Exception $e) {
@@ -181,7 +180,7 @@ class MoodBoardController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка сохранения данных'
+                'message' => 'Ошибка сохранения данных',
             ], 500);
         }
     }
@@ -196,6 +195,9 @@ class MoodBoardController extends Controller
             'state' => 'required|array',
             'actionType' => 'sometimes|string|max:64',
             'createdBy' => 'sometimes|string|max:255',
+            // Optional optimistic-concurrency guard. Legacy clients that do not send this field
+            // continue to work without any change in behaviour.
+            'baseVersion' => 'sometimes|nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -211,13 +213,25 @@ class MoodBoardController extends Controller
             $state = $this->normalizeStateForStorage($request->input('state', []));
             $actionType = (string) $request->input('actionType', 'command_execute');
             $createdBy = $request->input('createdBy');
+            $rawBaseVersion = $request->input('baseVersion');
+            $baseVersion = $rawBaseVersion !== null ? (int) $rawBaseVersion : null;
 
             $saveResult = $this->moodboardHistoryService->saveSnapshot(
                 $moodboardId,
                 $state,
                 $actionType,
-                $createdBy
+                $createdBy,
+                $baseVersion
             );
+
+            if ($saveResult['stale'] ?? false) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'stale_base_version',
+                    'currentVersion' => $saveResult['currentVersion'],
+                    'message' => 'Сохранение отклонено: версия устарела. Текущая версия: '.$saveResult['currentVersion'],
+                ], 409);
+            }
 
             return response()->json([
                 'success' => true,
@@ -241,15 +255,15 @@ class MoodBoardController extends Controller
         try {
             $board = MoodBoard::findByBoardId($boardId);
 
-            if (!$board) {
+            if (! $board) {
                 // Создаем новую доску
                 $board = MoodBoard::create([
                     'board_id' => $boardId,
                     'name' => 'New Board',
                     'data' => [
-                        'objects' => []
+                        'objects' => [],
                     ],
-                    'settings' => MoodBoard::getDefaultSettings()
+                    'settings' => MoodBoard::getDefaultSettings(),
                 ]);
 
                 $boardData = $board->getFullData();
@@ -257,7 +271,7 @@ class MoodBoardController extends Controller
                 return response()->json([
                     'success' => true,
                     'data' => $boardData,
-                    'message' => 'Создана новая доска'
+                    'message' => 'Создана новая доска',
                 ]);
             }
 
@@ -268,14 +282,14 @@ class MoodBoardController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $restoredData,
-                'message' => 'Данные загружены'
+                'message' => 'Данные загружены',
             ]);
 
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка загрузки данных'
+                'message' => 'Ошибка загрузки данных',
             ], 500);
         }
     }
@@ -288,10 +302,10 @@ class MoodBoardController extends Controller
         try {
             $board = MoodBoard::findByBoardId($boardId);
 
-            if (!$board) {
+            if (! $board) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Доска не найдена'
+                    'message' => 'Доска не найдена',
                 ], 404);
             }
 
@@ -299,14 +313,14 @@ class MoodBoardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $boardData
+                'data' => $boardData,
             ]);
 
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка загрузки данных'
+                'message' => 'Ошибка загрузки данных',
             ], 500);
         }
     }
@@ -333,14 +347,14 @@ class MoodBoardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $boardsData
+                'data' => $boardsData,
             ]);
 
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка загрузки списка досок'
+                'message' => 'Ошибка загрузки списка досок',
             ], 500);
         }
     }
@@ -353,10 +367,10 @@ class MoodBoardController extends Controller
         try {
             $board = MoodBoard::findByBoardId($boardId);
 
-            if (!$board) {
+            if (! $board) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Доска не найдена'
+                    'message' => 'Доска не найдена',
                 ], 404);
             }
 
@@ -364,14 +378,14 @@ class MoodBoardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Доска успешно удалена'
+                'message' => 'Доска успешно удалена',
             ]);
 
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка удаления доски'
+                'message' => 'Ошибка удаления доски',
             ], 500);
         }
     }
@@ -384,10 +398,10 @@ class MoodBoardController extends Controller
         try {
             $originalBoard = MoodBoard::findByBoardId($boardId);
 
-            if (!$originalBoard) {
+            if (! $originalBoard) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Доска не найдена'
+                    'message' => 'Доска не найдена',
                 ], 404);
             }
 
@@ -395,7 +409,7 @@ class MoodBoardController extends Controller
 
             $duplicatedBoard = MoodBoard::create([
                 'board_id' => $newBoardId,
-                'name' => $originalBoard->name . ' (копия)',
+                'name' => $originalBoard->name.' (копия)',
                 'description' => $originalBoard->description,
                 'data' => $originalBoard->data,
                 'settings' => $originalBoard->settings,
@@ -406,15 +420,15 @@ class MoodBoardController extends Controller
                 'message' => 'Доска успешно продублирована',
                 'data' => [
                     'id' => $duplicatedBoard->board_id,
-                    'name' => $duplicatedBoard->name
-                ]
+                    'name' => $duplicatedBoard->name,
+                ],
             ]);
 
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка дублирования доски'
+                'message' => 'Ошибка дублирования доски',
             ], 500);
         }
     }
@@ -427,10 +441,10 @@ class MoodBoardController extends Controller
         try {
             $board = MoodBoard::findByBoardId($boardId);
 
-            if (!$board) {
+            if (! $board) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Доска не найдена'
+                    'message' => 'Доска не найдена',
                 ], 404);
             }
 
@@ -438,14 +452,14 @@ class MoodBoardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $stats
+                'data' => $stats,
             ]);
 
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка получения статистики'
+                'message' => 'Ошибка получения статистики',
             ], 500);
         }
     }
@@ -495,7 +509,7 @@ class MoodBoardController extends Controller
      */
     private function normalizeStateForStorage(array $state): array
     {
-        if (!isset($state['objects']) || !is_array($state['objects'])) {
+        if (! isset($state['objects']) || ! is_array($state['objects'])) {
             return $state;
         }
 
@@ -504,7 +518,7 @@ class MoodBoardController extends Controller
         $imageObjectsNormalizedToCdn = 0;
 
         foreach ($state['objects'] as &$object) {
-            if (!is_array($object)) {
+            if (! is_array($object)) {
                 continue;
             }
 
@@ -567,7 +581,7 @@ class MoodBoardController extends Controller
             return $src;
         }
 
-        return rtrim($cdnBaseUrl, '/') . '/' . ltrim($objectPath, '/');
+        return rtrim($cdnBaseUrl, '/').'/'.ltrim($objectPath, '/');
     }
 
     private function extractObjectPathFromSrc(string $src): ?string
@@ -578,7 +592,7 @@ class MoodBoardController extends Controller
         }
 
         $path = parse_url($src, PHP_URL_PATH);
-        if (!is_string($path) || $path === '') {
+        if (! is_string($path) || $path === '') {
             return null;
         }
 
