@@ -17,3 +17,6 @@ coverage/
 .phpunit.cache/
 tests/_artifacts/
 _artifacts/
+
+# Локальная конфигурация редактора
+.cursor/
