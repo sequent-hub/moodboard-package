@@ -54,6 +54,22 @@ return [
             'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1.5'),
         ],
 
+        // OpenAI Video (Sora). Зеркало server/src/providers/openaiVideo.js.
+        'openai_video' => [
+            'api_key' => env('OPENAI_API_KEY', ''),
+            'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+            'model' => env('OPENAI_VIDEO_MODEL', 'sora-2'),
+            'timeout' => (int) env('OPENAI_VIDEO_TIMEOUT', 300),
+        ],
+
+        // Kling Video (Kuaishou). Зеркало server/src/providers/kling.js.
+        'kling' => [
+            'access_key' => env('KLING_ACCESS_KEY', ''),
+            'secret_key' => env('KLING_SECRET_KEY', ''),
+            'base_url' => env('KLING_BASE_URL', 'https://api-singapore.klingai.com'),
+            'timeout' => (int) env('KLING_TIMEOUT', 300),
+        ],
+
         // Tencent Hunyuan To 3D (TencentCloud API 3.0, TC3-HMAC).
         // ТОЛЬКО для локального теста: прямой вызов Tencent, минуя «Трубу»/«Бухгалтера».
         // Подпись требует ПАРУ secret_id + secret_key (одного ключа недостаточно).

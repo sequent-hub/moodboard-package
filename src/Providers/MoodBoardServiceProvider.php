@@ -14,7 +14,9 @@ use Futurello\MoodBoard\Http\Middleware\CorsMiddleware;
 use Futurello\MoodBoard\Console\Commands\MigrateMoodboardsToHistory;
 use Futurello\MoodBoard\Services\Ai\DeepSeekProvider;
 use Futurello\MoodBoard\Services\Ai\Hunyuan3dProvider;
+use Futurello\MoodBoard\Services\Ai\KlingVideoProvider;
 use Futurello\MoodBoard\Services\Ai\OpenAiImageProvider;
+use Futurello\MoodBoard\Services\Ai\OpenAiVideoProvider;
 use Futurello\MoodBoard\Services\Ai\Support\ProviderRegistry;
 use Futurello\MoodBoard\Services\Ai\YandexArtProvider;
 use Futurello\MoodBoard\Services\Ai\YandexProvider;
@@ -117,6 +119,22 @@ class MoodBoardServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(OpenAiVideoProvider::class, function ($app) {
+            return new OpenAiVideoProvider(
+                $app->make(HttpFactory::class),
+                (array) config('moodboard-ai.providers.openai_video'),
+                (array) config('moodboard-ai.http'),
+            );
+        });
+
+        $this->app->singleton(KlingVideoProvider::class, function ($app) {
+            return new KlingVideoProvider(
+                $app->make(HttpFactory::class),
+                (array) config('moodboard-ai.providers.kling'),
+                (array) config('moodboard-ai.http'),
+            );
+        });
+
         $this->app->singleton(ProviderRegistry::class, function ($app) {
             return new ProviderRegistry([
                 'yandex' => [
@@ -142,6 +160,16 @@ class MoodBoardServiceProvider extends ServiceProvider
                 'hunyuan-3d' => [
                     'label' => 'Hunyuan 3D',
                     'provider' => $app->make(Hunyuan3dProvider::class),
+                ],
+                'openai-video' => [
+                    'label'           => 'OpenAI Video',
+                    'provider'        => $app->make(OpenAiVideoProvider::class),
+                    'supportedRatios' => ['16:9', '9:16', '1:1', '4:3', '3:4'],
+                ],
+                'kling' => [
+                    'label'           => 'Kling Video',
+                    'provider'        => $app->make(KlingVideoProvider::class),
+                    'supportedRatios' => ['16:9', '9:16', '1:1'],
                 ],
             ]);
         });

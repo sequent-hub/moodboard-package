@@ -5,6 +5,7 @@ namespace Futurello\MoodBoard\Http\Controllers;
 use Futurello\MoodBoard\Http\Requests\AiChatRequest;
 use Futurello\MoodBoard\Http\Requests\AiImageRequest;
 use Futurello\MoodBoard\Http\Requests\AiModel3dRequest;
+use Futurello\MoodBoard\Http\Requests\AiVideoRequest;
 use Futurello\MoodBoard\Services\Ai\Exceptions\AiHttpException;
 use Futurello\MoodBoard\Services\Ai\Support\ProviderRegistry;
 use Futurello\MoodBoard\Services\Ai\Support\SseStreamWriter;
@@ -78,6 +79,72 @@ class AiController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    /**
+     * POST /api/v2/ai/{provider}/video — создать джоб генерации видео.
+     */
+    public function submitVideo(string $provider, AiVideoRequest $request): JsonResponse
+    {
+        try {
+            $client = $this->registry->video($provider);
+            $result = $client->submitVideo($request->normalized());
+        } catch (AiHttpException $e) {
+            return $this->errorResponse($e);
+        } catch (Throwable $e) {
+            Log::error('[moodboard.ai] video submit error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse(new AiHttpException(500, 'Internal server error'));
+        }
+
+        return response()->json(['jobId' => $result['jobId']]);
+    }
+
+    /**
+     * GET /api/v2/ai/{provider}/video/{jobId} — статус джоба.
+     *
+     * При DONE скачиваем видео с временного URL провайдера, кладём в хранилище
+     * доски (как 3D-модели и картинки) и возвращаем уже наш durable-URL —
+     * чтобы доска грузила стабильную ссылку, а не протухающую ссылку провайдера.
+     */
+    public function pollVideo(string $provider, string $jobId): JsonResponse
+    {
+        try {
+            $client = $this->registry->video($provider);
+            $status = $client->pollVideo($jobId);
+        } catch (AiHttpException $e) {
+            return $this->errorResponse($e);
+        } catch (Throwable $e) {
+            Log::error('[moodboard.ai] video poll error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse(new AiHttpException(500, 'Internal server error'));
+        }
+
+        if (($status['status'] ?? null) !== 'done') {
+            return response()->json([
+                'status' => $status['status'] ?? 'pending',
+                'progress' => $status['progress'] ?? ($status['status'] === 'running' ? 50 : 5),
+                'videoUrl' => null,
+                'mimeType' => null,
+                'error' => $status['error'] ?? null,
+            ]);
+        }
+
+        try {
+            $videoUrl = $this->storeRemoteFile($status['videoUrl'], 'mp4', 'video/mp4', 'videos');
+        } catch (Throwable $e) {
+            Log::error('[moodboard.ai] video store error', ['message' => $e->getMessage()]);
+
+            return $this->errorResponse(new AiHttpException(502, 'Не удалось сохранить видео'));
+        }
+
+        return response()->json([
+            'status' => 'done',
+            'progress' => 100,
+            'videoUrl' => $videoUrl,
+            'mimeType' => $status['mimeType'] ?? 'video/mp4',
+            'error' => null,
+        ]);
     }
 
     /**
@@ -159,7 +226,7 @@ class AiController extends Controller
      * возвращает публичный URL. Расширение задаём явно — вьювер матчит
      * загрузчик по расширению (.glb), не по content-sniff.
      */
-    private function storeRemoteFile(string $sourceUrl, string $extension, string $mime): string
+    private function storeRemoteFile(string $sourceUrl, string $extension, string $mime, string $directory = 'models'): string
     {
         $response = $this->http->withOptions(['verify' => $this->hunyuanVerify()])->timeout(120)->get($sourceUrl);
         if (! $response->successful()) {
@@ -168,7 +235,7 @@ class AiController extends Controller
 
         $bytes = $response->body();
         $filename = time().'_'.Str::random(10).'.'.$extension;
-        $path = 'models/'.date('Y/m').'/'.$filename;
+        $path = trim($directory, '/').'/'.date('Y/m').'/'.$filename;
 
         $cdnBaseUrl = trim((string) env('MOODBOARD_IMAGE_CDN_BASE_URL', ''));
 

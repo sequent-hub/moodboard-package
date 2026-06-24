@@ -48,6 +48,9 @@ Route::prefix('api/v2')->group(function () use ($v2NotImplemented) {
         // т.к. отличаются последним сегментом, коллизии нет.
         Route::post('/{provider}/model3d', [AiController::class, 'submitModel3d']);
         Route::get('/{provider}/model3d/{jobId}', [AiController::class, 'pollModel3d']);
+        // Видео-генерация (OpenAI Sora, Kling): submit -> poll.
+        Route::post('/{provider}/video', [AiController::class, 'submitVideo']);
+        Route::get('/{provider}/video/{jobId}', [AiController::class, 'pollVideo']);
         Route::post('/{provider}/chat', [AiController::class, 'chat']);
     });
 });
