@@ -2,6 +2,7 @@
 
 namespace Futurello\MoodBoard\Services;
 
+use Futurello\MoodBoard\Models\MoodBoard;
 use Futurello\MoodBoard\Models\MoodboardHistory;
 use Futurello\MoodBoard\Repositories\MoodboardHistoryRepository;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,13 @@ class MoodboardHistoryService
         ?int $baseVersion = null
     ): array {
         return DB::transaction(function () use ($moodboardId, $state, $actionType, $createdBy, $baseVersion): array {
+            // История — источник правды для контента, но moodboardLoad отдаёт 404,
+            // если нет родительской строки moodboards. metadata/save создаёт её
+            // отдельным запросом, чей сбой фронт намеренно игнорирует, поэтому при
+            // его 422 (пустые settings и т.п.) доска сохраняется в историю, но не
+            // загружается. Гарантируем родителя здесь, чтобы загрузка не терялась.
+            $this->ensureMoodboardExists($moodboardId);
+
             $stateHash = $this->buildStateHash($state);
             $latest = $this->historyRepository->findLatestByMoodboardId($moodboardId, true);
 
@@ -141,6 +149,18 @@ class MoodboardHistoryService
             'next_count' => $newCount,
             'removed_ids' => $removedIds,
         ]);
+    }
+
+    private function ensureMoodboardExists(string $moodboardId): void
+    {
+        MoodBoard::firstOrCreate(
+            ['board_id' => $moodboardId],
+            [
+                'name' => 'Untitled Moodboard',
+                'data' => [],
+                'settings' => MoodBoard::getDefaultSettings(),
+            ]
+        );
     }
 
     private function buildStateHash(array $state): string
